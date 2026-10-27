@@ -796,7 +796,7 @@ stateDiagram-v2
 
 ## 19. P4 设计：子代理会话冷存（2026-10-27）
 
-> **状态：已实施**（2026-10-27，P4 批次 5 个 stage 全部交付）。实施落点：
+> **状态：实施中**（2026-10-27：批次 A 后全量 268 项过 267，仅剩 UI 契约；UI 与收口在批次 B，全绿后才由架构师改为「已实施」）。实施落点：
 > `lib/store.js`（v2→v3）/ `lib/config.js`（三字段）/ `lib/engine.js`（scanHeaderFacts、subagentCandidates、
 > class 分支的 preflight/migrate/restore、对账与列表分域、批量作业）/ `lib/sweeper.js`（pauseReasonS +
 > sweepSubagents + 独立预算与退避键）/ `lib/http.js`（三个路由 + `/status.subagent` + `list.class`）/
@@ -891,7 +891,7 @@ DSH 的会话目录里有两个完全不同的群体，但**归档只覆盖其�
 
 **FR-P4-2 header 事实扫描（`lib/engine.js` + `lib/indexer.js`）**
 
-- 触发：① 插件启动 60s 后（在首轮清扫之前）；② `subscan:at` 超过 24h；③ 手动 `POST /subagent-scan`；④ 全量索引完成后。
+- 触发（**只读扫描，与 `subagentMigrate` 开关解耦**——否则默认关时设置页读数永远停在「未扫描」，2026-10-27 审计裁决）：① 插件启动 60s 后；② 此后每 24h（`SUBAGENT_FIRST_SCAN_DELAY_MS` 只服务①）；③ 手动 `POST /subagent-scan`；④ 全量索引完成后。扫描只读，不搬移任何文件。
 - 动作：遍历 `sessions/<projectKey>/<id>/`，读每个会话**首帧 header**（现有 `readSessionHeader`，不解压整份日志），
   写回 `sessions.origin / delegation_depth / parent_session`（行不存在时只收集边，不建行）。
 - 产出 meta：`subscan:at`（完成时刻）、`subscan:count`、`subscan:gaps`（**任何**读不到 header 的目录 id，JSON 数组——有无 DB 行都算）、
@@ -1006,6 +1006,7 @@ ALTER TABLE sessions ADD COLUMN parent_session TEXT;                          --
 - 读取者：`subagentCandidates`、`reconcileRegistry`、`list`、`toItem`、`/status`。
 - 派生而非存储：`class = archivedIds.has(id) ? 'archived' : (isSubagentRow ? 'subagent' : null)` —— 不新增 `vault_class` 列，
   避免「列与归档集合不同步」的新一类不一致。
+- **`subscan:count` 口径（2026-10-27 裁决，批次 A 后定稿）**：`count` = **成功读到 header 的目录数**（含无 DB 行的目录；读不到的那些进 `gaps` 另计）。无 DB 行的目录只收 `orphanEdges`、不建行，但仍计入覆盖读数——否则「有目录没被算进覆盖面」会让缺口读数失真。`/status.subagent` 同时给 `count` 与 `gaps`，二者之和应等于扫描到的目录总数（自检关系）。
 
 **meta 键（谁写谁读）**
 
@@ -1041,6 +1042,7 @@ ALTER TABLE sessions ADD COLUMN parent_session TEXT;                          --
 
 - **空集**：无子代理会话 / 无候选 ⇒ 0 读数，UI 正常空态，不报错。
 - **畸形输入**：header 读不到 ⇒ `gaps`；`parentSession` 指向不存在的 id ⇒ 边保留但不阻塞（它只保护被指向者）。
+- **`sessions` 根不存在（ENOENT）= 空集扫描**（照常写 `at` / `count=0` / `gaps=[]`，并 `log('warn')` 留痕；`/status.subagent.scanPosture` 给 `empty-root`），否则空机/新装环境的 class S 永远停在 `subagent-refs-incomplete`。**判别器**：ENOENT 时再探一次 `DSH_HOME` 是否可读——`DSH_HOME` 也不可读（Windows 上卷掉同样返回 ENOENT）⇒ 按真实读失败 fail-closed（不写 `at`）；`DSH_HOME` 可读 ⇒ 才认定「空集」。EACCES/EIO 一律 fail-closed。2026-10-27 批次 A 裁决 + 审计补强。
 - **gaps 的解除路径**（评审 #4 裁定 A）：`/status.subagent.scanGaps` 逐条列出 gap 的 id 与原因，UI 黄条给「重新扫描」；用户修好/移走坏目录后重扫即自动解除。**不提供静默豁免**（那会削弱 I-18），这是有意的 fail-closed 取舍。
 - **并发**：所有写操作走既有单串行 `enqueue`；迁移与恢复互斥；手动批量作业与自动清扫互斥（同一把锁，先到先跑）。
 - **重启**：`status=migrating` 的行靠 marker 收敛（复用 §11）；`subscan:job` 中断 ⇒ 下次 `/status` 显示「上次批量中断」，可再点一次（已冷的行不在候选里，天然幂等）。

@@ -277,7 +277,9 @@ test('P4 FR-P4-2（评审 #9）：orphanEdges 超过上限的溢出部分计入 
     // 一个无行目录里塞 SUBAGENT_ORPHAN_EDGE_LIMIT+1 个 id 型引用字段
     const extraHeader = {};
     for (let i = 0; i <= SUBAGENT_ORPHAN_EDGE_LIMIT; i += 1) extraHeader['ref' + i] = 'session-ref-' + i;
-    await h.addSession('unregistered-hub', extraHeader);
+    // 夹具修正：addSession 的第二个参数是 opts，注入自定义 header 字段要走 opts.extraHeader。
+    // 旧写法把 extraHeader 当成 opts 本身 ⇒ header 里一个 refN 都没写进去，用例根本没造出 501 条边。
+    await h.addSession('unregistered-hub', { extraHeader });
     const report = await h.engine.scanHeaderFacts({ force: true });
     assert.equal(report.ok, true, JSON.stringify(report));
     assert.equal(report.orphanEdges.length, SUBAGENT_ORPHAN_EDGE_LIMIT, '落库上限 = ' + SUBAGENT_ORPHAN_EDGE_LIMIT);

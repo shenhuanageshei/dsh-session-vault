@@ -70,9 +70,16 @@ async function createHarness(options = {}) {
   async function addSession(id, opts = {}) {
     const dir = path.join(paths.sessionsRoot, pk, id);
     await mkdir(dir, { recursive: true });
-    const logs = opts.logs || { 'session.v4.jsonl.zstd': frames(id, cwd) };
-    for (const [name, lines] of Object.entries(logs)) {
-      await writeFile(path.join(dir, name), Buffer.concat(lines.map((line) => zstdCompressSync(Buffer.from(line + '\n')))));
+    // 夹具修正（A-P4-5 / gaps fail-closed）：`noGeneration` 造「没有合法代际」的坏目录。
+    // 旧夹具忽略该选项 ⇒ 所谓坏目录其实带合法代际，header 事实扫描永远没有缺口，
+    // 「gaps 非空 ⇒ 暂停且一个都不搬」这条用例形同虚设（断言永远走不到暂停分支）。
+    if (opts.noGeneration) {
+      await writeFile(path.join(dir, 'not-a-generation.txt'), 'junk');
+    } else {
+      const logs = opts.logs || { 'session.v4.jsonl.zstd': frames(id, cwd) };
+      for (const [name, lines] of Object.entries(logs)) {
+        await writeFile(path.join(dir, name), Buffer.concat(lines.map((line) => zstdCompressSync(Buffer.from(line + '\n')))));
+      }
     }
     return dir;
   }

@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { resolveVaultPaths, createConfigStore } from '../lib/config.js';
 import { VaultStore } from '../lib/store.js';
-import { VaultEngine, projectKey } from '../lib/engine.js';
+import { VaultEngine, projectKey, SUBSCAN_META } from '../lib/engine.js';
+import { VaultIndexer } from '../lib/indexer.js';
 import {
   Sweeper,
   sweepBackoffMs,
@@ -541,3 +542,138 @@ test('P4：subagentMigrate=false 时自动清扫不跑，但手动候选照常�
     await h.dispose();
   }
 });
+
+// ---------------------------------------------------------------------------
+// P4 FR-P4-2（2026-10-27 审计 #2 / #3）：ENOENT 留痕 + scanPosture + DSH_HOME 判别器，
+// 以及「只读 header 事实扫描」与 subagentMigrate 开关解耦（清扫 tick 前置 / 全量索引完成后）
+// ---------------------------------------------------------------------------
+
+test('P4 FR-P4-2（审计 #2）：sessions 根 ENOENT 且 DSH_HOME 可读 ⇒ 空集扫描 + warn + scanPosture=empty-root', async () => {
+  const h = await createHarness({ config: { subagentMigrate: false } });
+  try {
+    const logs = [];
+    h.engine.logger = {
+      info(message) { logs.push(['info', String(message)]); },
+      warn(message) { logs.push(['warn', String(message)]); },
+      error(message) { logs.push(['error', String(message)]); },
+    };
+    // 夹具不建 sessionsRoot（只有 configStore/vault.db）⇒ readdir(sessionsRoot) 必 ENOENT，
+    // 而 DSH_HOME（h.home）可读 ⇒ 判别器必须认定「空集」。
+    assert.equal(await pathExistsSweep(h.paths.sessionsRoot), false, '前提：sessions 根不存在');
+    assert.equal(await pathExistsSweep(h.paths.home), true, '前提：DSH_HOME 可读');
+
+    const report = await h.engine.scanHeaderFacts({ force: true });
+    assert.equal(report.ok, true, JSON.stringify(report));
+    assert.equal(report.code, undefined);
+    assert.equal(report.posture, 'empty-root', 'ENOENT + DSH_HOME 可读 ⇒ 空集姿态');
+    assert.equal(report.count, 0);
+    assert.deepEqual(report.gaps, []);
+    // 空集扫描照常落库（否则空机/新装永远停在 subagent-refs-incomplete）
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.at)), h.clock.now, '空集扫描必须写 at');
+    assert.equal(h.store.getMeta(SUBSCAN_META.posture), 'empty-root');
+    assert.equal(h.engine.subscanSnapshot().posture, 'empty-root');
+    assert.equal(h.engine.subscanSnapshot().fresh, true, '空集也是「新鲜且无缺口」的可信快照');
+    const status = await h.engine.subagentStatus({ withCandidates: false });
+    assert.equal(status.scanPosture, 'empty-root', '/status.subagent.scanPosture 必须给 empty-root');
+    assert.equal(status.count + status.gaps.length, 0, '空集自检：count + gaps = 0');
+    assert.equal(
+      logs.some((entry) => entry[0] === 'warn' && /ENOENT/.test(entry[1])),
+      true,
+      'ENOENT 空集扫描必须 log(warn) 留痕（审计 #2：无日志的假完整快照不可接受）',
+    );
+  } finally {
+    await h.dispose();
+  }
+});
+
+test('P4 FR-P4-2（审计 #2）：ENOENT 但 DSH_HOME 也不可读 ⇒ fail-closed（sessions-unreadable，不写 at）；非 ENOENT 行为不变', async () => {
+  const h = await createHarness();
+  try {
+    const logs = [];
+    h.engine.logger = {
+      info(message) { logs.push(['info', String(message)]); },
+      warn(message) { logs.push(['warn', String(message)]); },
+      error(message) { logs.push(['error', String(message)]); },
+    };
+    // 卷掉模拟：sessions 根与 DSH_HOME 都指向不存在的位置（Windows 上卷掉对两者同样返回 ENOENT）。
+    const missing = path.join(h.home, 'missing-volume');
+    h.engine.paths = Object.assign({}, h.paths, {
+      sessionsRoot: path.join(missing, 'sessions'),
+      home: missing,
+    });
+    const report = await h.engine.scanHeaderFacts({ force: true });
+    assert.equal(report.ok, false);
+    assert.equal(report.code, 'sessions-unreadable', JSON.stringify(report));
+    assert.equal(h.store.getMeta(SUBSCAN_META.at), null, 'fail-closed：不得写 subscan:at');
+    assert.equal(h.store.getMeta(SUBSCAN_META.posture), null, '读失败不写姿态（不冒充 empty-root）');
+    assert.equal(h.engine.subscanSnapshot().posture, null);
+    assert.equal(h.engine.subscanSnapshot().fresh, false, '没有 at ⇒ 快照不可信');
+    assert.equal(
+      logs.some((entry) => entry[0] === 'warn' && /DSH_HOME/.test(entry[1])),
+      true,
+      '判别器拒绝时必须留痕（说清是 DSH_HOME 也不可读）',
+    );
+
+    // EACCES/EIO 一类行为不变：sessions 根是「文件」而不是目录（Windows 上 ENOTDIR）⇒ 同样 fail-closed，
+    // 且**不再多探一次 DSH_HOME**（非 ENOENT 分支）。
+    const notDir = path.join(h.home, 'sessions-not-a-dir');
+    await writeFile(notDir, 'x');
+    h.engine.paths = Object.assign({}, h.paths, { sessionsRoot: notDir, home: missing });
+    const notDirReport = await h.engine.scanHeaderFacts({ force: true });
+    assert.equal(notDirReport.ok, false);
+    assert.equal(notDirReport.code, 'sessions-unreadable');
+    assert.equal(h.store.getMeta(SUBSCAN_META.at), null, '非 ENOENT 读失败同样不写 at');
+  } finally {
+    await h.dispose();
+  }
+});
+
+test('P4 FR-P4-2（审计 #3）：subagentMigrate=false 时清扫 tick 仍会补扫过期的 header 事实', async () => {
+  const h = await createHarness({ config: { autoMigrate: false, subagentMigrate: false } });
+  try {
+    // 一个**无 DB 行**的可读目录：既验证「扫描不被开关挡掉」，也验证 count 按目录口径算。
+    await h.addSession('session-facts-only');
+    assert.equal(h.store.getMeta(SUBSCAN_META.at), null, '前提：从未扫描');
+    const sweeper = h.sweeper();
+    const report = await sweeper.sweep();
+    assert.equal(report.skipped, 'auto-migrate-off', 'class A 行为不变（开关仍然早退）');
+    assert.equal(report.subagent.skipped, 'subagent-migrate-off', 'class S 自动迁移仍然不跑');
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.at)), h.clock.now, '只读扫描与 subagentMigrate 解耦：过期就补扫');
+    assert.equal(h.store.getMeta(SUBSCAN_META.posture), 'ok');
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.count)), 1, '无 DB 行的可读目录也计入 count（§19.7 口径）');
+    assert.equal(report.subscan.scanned, true, '报告必须如实说本轮补扫了');
+    assert.equal(report.subscan.posture, 'ok');
+
+    // 快照新鲜 ⇒ 下一拍不再全扫（IO 成本），但读数仍在。
+    h.clock.now += 60 * 1000;
+    const second = await sweeper.sweep();
+    assert.equal(second.subscan.scanned, false, '24h 内不重复全扫');
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.at)), h.clock.now - 60 * 1000, 'at 不被无谓重写');
+
+    // 过期 ⇒ 重新补扫（>24h），且不被任何开关挡掉。
+    h.clock.now += 24 * 60 * 60 * 1000 + 1000;
+    const third = await sweeper.sweep();
+    assert.equal(third.subscan.scanned, true, '超过 24h ⇒ 必须重扫');
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.at)), h.clock.now);
+  } finally {
+    await h.dispose();
+  }
+});
+
+test('P4 FR-P4-2（审计 #3）：全量索引完成后触发一次过期的 header 事实扫描', async () => {
+  const h = await createHarness({ config: { subagentMigrate: false } });
+  try {
+    await h.addSession('session-indexed-facts');
+    assert.equal(h.store.getMeta(SUBSCAN_META.at), null, '前提：从未扫描');
+    const indexer = new VaultIndexer({ engine: h.engine, store: h.store, paths: h.paths, logger: quiet, now: () => h.clock.now });
+    const progress = await indexer.runFullIndex();
+    assert.equal(progress.phase, 'done', JSON.stringify(progress));
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.at)), h.clock.now, '全量索引完成 ⇒ 补扫 header 事实');
+    assert.equal(h.store.getMeta(SUBSCAN_META.posture), 'ok');
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.count)), 1);
+    assert.equal(h.engine.subscanSnapshot().fresh, true);
+  } finally {
+    await h.dispose();
+  }
+});
+

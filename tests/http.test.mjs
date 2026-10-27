@@ -619,3 +619,61 @@ test('P4 FR-P4-7：引擎不可用时三个子代理路由一律 503（不是 50
     await rm(home, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// P4 FR-P4-2 / §19.7 + §19.9（2026-10-27 审计 #1/#2）：/status.subagent 的 count + gaps 自检关系与 scanPosture
+// ---------------------------------------------------------------------------
+
+test('P4 FR-P4-2：/status.subagent 给 count + gaps（§19.7 自检关系）与 scanPosture（§19.9）', async () => {
+  const { home, configStore } = await makeHome();
+  const scanGaps = [{ id: 'broken-1', reason: 'no-generation' }];
+  const engine = {
+    async status() {
+      return {
+        stats: {},
+        subagent: {
+          count: 4,
+          gaps: scanGaps,
+          scanCount: 4,
+          scanGaps,
+          scanPosture: 'ok',
+          scanAt: 1799999999000,
+          scanFresh: true,
+        },
+      };
+    },
+    store: {},
+    paths: {},
+  };
+  const api = createVaultApi({
+    home, configStore, version: '0.1.0-test',
+    getEngine: async () => engine,
+    getIndexer: async () => indexerStubForP4(),
+    logger: quietLogger,
+  });
+  try {
+    const status = await call(api, { url: PREFIX + '/status' });
+    const sub = status.json.subagent;
+    assert.equal(sub.count, 4, 'count = 成功读到 header 的目录数');
+    assert.deepEqual(sub.gaps, scanGaps, 'gaps 必须逐条透传');
+    assert.equal(sub.count + sub.gaps.length, 5, 'count + gaps = 扫描到的目录总数（自检关系）');
+    assert.equal(sub.scanPosture, 'ok', 'scanPosture 必须透传');
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('P4 FR-P4-2：引擎不可用时 count / gaps / scanPosture 是 0 / [] / null（不编造真空集）', async () => {
+  const { home, configStore } = await makeHome();
+  const api = makeApi(home, configStore);
+  try {
+    const status = await call(api, { url: PREFIX + '/status' });
+    const sub = status.json.subagent;
+    assert.equal(sub.count, 0);
+    assert.deepEqual(sub.gaps, []);
+    assert.equal(sub.scanPosture, null, '读不到扫描姿态 ⇒ null（不冒充 ok / empty-root）');
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+

@@ -796,7 +796,7 @@ stateDiagram-v2
 
 ## 19. P4 设计：子代理会话冷存（2026-10-27）
 
-> **状态：实施中**（2026-10-27：批次 A 后全量 268 项过 267，仅剩 UI 契约；UI 与收口在批次 B，全绿后才由架构师改为「已实施」）。实施落点：
+> **状态：已实施（代码）**（2026-10-27：批次 A + B1 + B2 全部交付；全量 **274 项全绿**、构建逐字节一致、独立审计发现的 6 处偏离已逐条处置。**实机迁移尚未执行**——是否搬那 1271 个候选取决于交付后的用户决定）。实施落点：
 > `lib/store.js`（v2→v3）/ `lib/config.js`（三字段）/ `lib/engine.js`（scanHeaderFacts、subagentCandidates、
 > class 分支的 preflight/migrate/restore、对账与列表分域、批量作业）/ `lib/sweeper.js`（pauseReasonS +
 > sweepSubagents + 独立预算与退避键）/ `lib/http.js`（三个路由 + `/status.subagent` + `list.class`）/
@@ -931,7 +931,7 @@ DSH 的会话目录里有两个完全不同的群体，但**归档只覆盖其�
 
 - `reconcileRegistry()`：`isSubagentRow(row)` 的冷行**不参与** A-13 判定（P-2）；`hot-restored → hot` 翻写仍只作用于 class A。
 - `/list`：`class` 参数三值 `archived`（默认）/ `subagent` / `all`；返回项带 `class` 与 `status`（`hot-subagent` / `cold`）。
-- `/status` 新增 `subagent` 段：`{candidates,candidatesBytes,cold,coldBytes,scanAt,scanGaps,paused,job}`。
+- `/status` 新增 `subagent` 段：`{candidates,candidatesBytes,cold,coldBytes,scanAt,scanCount,scanGaps,scanPosture,paused,job}`。
 - Sweeper：暂停条件拆两套 —— class A 保持原五条；class S 用
   `{cold-unavailable, cross-volume-disabled, refs-incomplete, restoring-unsettled}`（AM 在场**不**暂停 class S，因为 AM 只管归档）。
 
@@ -1013,7 +1013,8 @@ ALTER TABLE sessions ADD COLUMN parent_session TEXT;                          --
 | 键 | 写 | 读 | 语义 |
 | --- | --- | --- | --- |
 | `subscan:at` | scanHeaderFacts | candidates / status / sweeper | 上次成功扫描时刻 |
-| `subscan:count` / `subscan:gaps` / `subscan:orphanEdges` | scanHeaderFacts | status / candidates | 覆盖面与缺口 |
+| `subscan:count` / `subscan:gaps` / `subscan:orphanEdges` | scanHeaderFacts | status / candidates | 覆盖面与缺口（`count + gaps = 目录总数`） |
+| `subscan:posture` | scanHeaderFacts | status / UI | `ok` / `empty-root` / 缺失（从未成功扫描，读面给 `null`，不冒充 `ok`） |
 | `subscan:budget:<UTC 日>` | sweeper | sweeper / status | 自动清扫日预算 |
 | `subscan:fail:<id>` | sweeper | sweeper | 失败退避（公式同 §9） |
 | `subscan:job` | http/engine 批量作业 | status / UI | 手动批量进度 |

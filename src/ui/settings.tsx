@@ -230,6 +230,31 @@ function VaultConfigForm(props) {
 
 
 /**
+ * P4（UI 档 §7）**文案红线**：搬到冷存后宿主的可见性会变（会话列表与父会话的子代理缩进行
+ * 都不再显示它们），设置卡与主面板「子代理会话」页都必须逐字写明。
+ *
+ * 字面量放在设置页源（契约对 src/ui/settings.tsx 的字面量单独断言）；主面板通过**同一模块
+ * 作用域**的 SUBAGENT_RED_LINE 复用同一份文案 —— 全仓只此一句，杜绝两处漂移。
+ */
+var SUBAGENT_RED_LINE = '搬到冷存后，宿主的会话列表与父会话的子代理缩进行不再显示它们；可在本页或全局搜索找回';
+
+/** 只读读数的绝对时刻（「上次扫描」只给「N 分钟前」时对不上钟表，UI 档 §7 要求完成时间可见）。 */
+function vaultStamp(ms) {
+  var value = Number(ms) || 0;
+  if (!value) return '—';
+  try { return new Date(value).toLocaleString(); } catch (err) { return String(value); }
+}
+
+/** 批量迁移进度归一到 0..100（服务端可能给小数 / 缺失）。 */
+function vaultPercent(value) {
+  var n = Number(value);
+  if (!isFinite(n)) return 0;
+  if (n < 0) return 0;
+  if (n > 100) return 100;
+  return Math.round(n);
+}
+
+/**
  * P4（FR-P4-8 / UI 档 §7）：「子代理会话冷存」卡。
  *
  * 卡顶部**必须先给恢复入口指路**（2026-10-27 用户实测：在设置页找不到恢复冷会话的入口）——
@@ -334,7 +359,7 @@ function VaultSubagentCard(props) {
         tone: 'success',
         text: '扫描完成' + (result
           ? '：' + (result.scanned || 0) + ' 个目录 / 缺口 ' + ((result.gaps || []).length) + ' 个' + (result.tookMs ? '（' + Math.round(result.tookMs / 1000) + 's）' : '')
-          : ''),
+          : '') + ' · 完成于 ' + vaultStamp(Date.now()),
       });
       reload();
     }).catch(function (err) {
@@ -405,8 +430,9 @@ function VaultSubagentCard(props) {
         onClick: function () { selectVaultPanel(ctxRef); }
       }, '打开主面板')
     ),
-    // 恢复入口指路（卡顶部，2026-10-27 用户实测反馈）
-    h('div', { style: { fontSize: 12, lineHeight: 1.7, color: VAULT_TEXT } }, SUBAGENT_MAIN_PANEL_HINT),
+    // 恢复入口指路（UI 档 §7 卡顶部硬文案；2026-10-27 用户实测：在设置页找不到恢复冷会话的入口）
+    h('div', { style: { fontSize: 12, lineHeight: 1.7, color: VAULT_TEXT } },
+      '列表 / 预览 / 恢复入口在主面板（侧栏「会话保险库」），本页只放配置'),
     h(VaultFieldRow, { label: '子代理自动清扫' },
       h('input', { type: 'checkbox', checked: Boolean(s && s.migrate), onChange: toggleMigrate }),
       h('span', { style: { fontSize: 12, color: VAULT_MUTED } }, '默认关；开启前二次确认。手动「迁移候选」不受这个开关限制。')
@@ -431,7 +457,7 @@ function VaultSubagentCard(props) {
     h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12, color: VAULT_MUTED } },
       h('span', null, '候选 ' + ((s && s.candidates) || 0) + ' 个 / ' + formatBytes(s ? s.candidatesBytes : 0)),
       h('span', null, '已冷存 ' + ((s && s.cold) || 0) + ' 个 / ' + formatBytes(s ? s.coldBytes : 0)),
-      h('span', null, '上次扫描 ' + (s && s.scanAt ? formatAge(s.scanAt) : '还没有扫描过')),
+      h('span', null, '上次扫描 ' + (s && s.scanAt ? formatAge(s.scanAt) + '（' + vaultStamp(s.scanAt) + '）' : '还没有扫描过')),
       h('span', { style: gaps.length ? { color: 'var(--dsh-warning, #9A3412)' } : undefined },
         '缺口 ' + gaps.length + ' 个' + (gaps.length ? '（会暂停：一个都不搬）' : '')),
       h('span', null, '自动清扫 ' + (s && s.migrateEffective ? '已开启' : '关'))
@@ -439,14 +465,30 @@ function VaultSubagentCard(props) {
     h(VaultSubagentPauseBanner, { subagent: s, busy: busy[0], onRescan: scan }),
     h('div', { style: { fontSize: 12, lineHeight: 1.7, color: 'var(--dsh-warning, #9A3412)' } }, SUBAGENT_RED_LINE),
     job
-      ? h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: VAULT_MUTED } },
-          h('span', null,
-            '批量迁移 ' + (job.done || 0) + ' / ' + (job.total || 0) + '（' + (job.progress || 0) + '%）· 成功 ' +
-              (job.migrated || 0) + ' / 失败 ' + (job.failed || 0) +
-              (job.cancelled ? ' · 已取消' : '') + (job.interrupted ? ' · 上次批量中断（可重跑）' : '')),
-          job.running
-            ? h('button', { type: 'button', style: vaultButtonStyle(false, false), onClick: cancelJob }, '取消')
-            : null)
+      ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: VAULT_MUTED } },
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
+            h('span', null,
+              '批量迁移 ' + (job.done || 0) + ' / ' + (job.total || 0) + '（' + (job.progress || 0) + '%）· 成功 ' +
+                (job.migrated || 0) + ' / 失败 ' + (job.failed || 0) +
+                (job.cancelled ? ' · 已取消' : '') + (job.interrupted ? ' · 上次批量中断（可重跑）' : '')),
+            job.running
+              ? h('button', { type: 'button', style: vaultButtonStyle(false, false), onClick: cancelJob }, '取消')
+              : null),
+          // UI 档 §7：批量迁移要给**进度条**（不只是一行数字）+「可取消」
+          h('div', {
+            role: 'progressbar',
+            'aria-label': '批量迁移进度',
+            'aria-valuemin': 0,
+            'aria-valuemax': 100,
+            'aria-valuenow': vaultPercent(job.progress),
+            style: { height: 6, borderRadius: 3, background: VAULT_SURFACE_MUTED, overflow: 'hidden' }
+          },
+            h('div', {
+              style: {
+                height: '100%', width: vaultPercent(job.progress) + '%',
+                background: 'var(--dsh-accent, #4338CA)', transition: 'width 0.2s'
+              }
+            })))
       : null,
     message[0]
       ? h('div', {

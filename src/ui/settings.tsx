@@ -265,6 +265,14 @@ function VaultSubagentCard(props) {
   var state = React.useState(props.subagent || null);
   var message = React.useState(null);
   var busy = React.useState(false);
+  /**
+   * B2c（2026-10-27 裁决）：数字输入的**本地编辑态**（key = 字段名，value = 输入框原文）。
+   *
+   * 旧实现 onChange 就 patchConfig ⇒ 每敲一个字符就 POST /config：输入 "1"→"14" 的中间态会把
+   * 阈值写成 1 天，若此时自动迁移开着，一次清扫可能按 1 天阈值搬走会话 —— 写操作被中间态触发的
+   * 安全窗口。现在只有**失焦 / 回车**才提交（开关等布尔项保持即时保存：它们没有中间态）。
+   */
+  var drafts = React.useState({});
 
   function reload() {
     vaultApi('status', {}).then(function (data) {
@@ -307,19 +315,73 @@ function VaultSubagentCard(props) {
     }).then(function () { busy[1](false); });
   }
 
-  function numberField(field, min, max, label) {
+  /**
+   * B2c（2026-10-27 裁决）：数字输入 = 本地编辑态 + 失焦/回车提交，**绝不 onChange 就 POST**。
+   *
+   * 提交时用 parseIntField 解析（空串/非整数/越界一律保留原值 + 白话提示，绝不静默转 0）；
+   * 解析失败或与已保存值相同 ⇒ 不发请求、清掉草稿（输入框回到已保存值）。
+   * 开关等布尔项仍即时保存（`toggleMigrate`）—— 布尔项没有中间态。
+   */
+  function draftOf(field, committed) {
+    var d = drafts[0] || {};
+    if (Object.prototype.hasOwnProperty.call(d, field)) return d[field];
+    return committed === undefined || committed === null ? '' : String(committed);
+  }
+
+  function setDraft(field, raw) {
+    drafts[1](function (prev) {
+      var next = {};
+      Object.keys(prev || {}).forEach(function (key) { next[key] = prev[key]; });
+      next[field] = String(raw);
+      return next;
+    });
+  }
+
+  function dropDraft(field) {
+    drafts[1](function (prev) {
+      if (!prev || !Object.prototype.hasOwnProperty.call(prev, field)) return prev || {};
+      var next = {};
+      Object.keys(prev).forEach(function (key) { if (key !== field) next[key] = prev[key]; });
+      return next;
+    });
+  }
+
+  function commitNumber(field, min, max, label, committed) {
     return function (event) {
-      var currentValue = state[0] ? state[0][field === 'subagentAgeDays' ? 'ageDays' : 'dailyBudgetCount'] : undefined;
-      var parsed = parseIntField(event.target.value, { min: min, max: max, fallback: currentValue, label: label });
+      var raw = event && event.target && event.target.value !== undefined
+        ? event.target.value
+        : draftOf(field, committed);
+      var parsed = parseIntField(raw, { min: min, max: max, fallback: committed, label: label });
+      dropDraft(field);
       if (!parsed.ok) {
-        // 空串/非法值保留旧值并提示（与 archiveAgeDays 同一套口径，绝不静默转 0）
+        // 空串/非法值保留已保存值并提示（与 archiveAgeDays 同一套口径，绝不静默转 0）
         message[1]({ tone: 'warning', text: parsed.message });
         return;
       }
       message[1](null);
+      if (parsed.value === committed) return;
       var body = {};
       body[field] = parsed.value;
       patchConfig(body, '已保存，下一次清扫立即按新值执行（无需重启）');
+    };
+  }
+
+  /** 数字输入的统一接线：输入只改草稿；失焦或回车才提交。 */
+  function numberProps(field, min, max, label, committed) {
+    var commit = commitNumber(field, min, max, label, committed);
+    return {
+      type: 'number', min: min, max: max,
+      value: draftOf(field, committed),
+      'aria-label': label,
+      onChange: function (event) { setDraft(field, event.target.value); },
+      onBlur: commit,
+      onKeyDown: function (event) {
+        if (event && (event.key === 'Enter' || event.keyCode === 13)) {
+          if (typeof event.preventDefault === 'function') event.preventDefault();
+          commit(event);
+        }
+      },
+      style: inputStyle
     };
   }
 
@@ -437,23 +499,18 @@ function VaultSubagentCard(props) {
       h('input', { type: 'checkbox', checked: Boolean(s && s.migrate), onChange: toggleMigrate }),
       h('span', { style: { fontSize: 12, color: VAULT_MUTED } }, '默认关；开启前二次确认。手动「迁移候选」不受这个开关限制。')
     ),
+    // B2c：数字项只在失焦/回车时保存（输入过程中不会把中间态写进 config，消除瞬时阈值窗口）
     h(VaultFieldRow, { label: '子代理年龄阈值（天）' },
-      h('input', {
-        type: 'number', min: 0, max: 3650, value: ageDays,
-        onChange: numberField('subagentAgeDays', 0, 3650, '子代理年龄阈值'),
-        style: inputStyle
-      }),
+      h('input', numberProps('subagentAgeDays', 0, 3650, '子代理年龄阈值', ageDays)),
       h('span', { style: { fontSize: 12, color: VAULT_MUTED } },
         '0 = 关闭；当前会命中 ' + ((s && s.candidates) || 0) + ' 个 / ' + formatBytes(s ? s.candidatesBytes : 0))
     ),
     h(VaultFieldRow, { label: '自动清扫日预算（个）' },
-      h('input', {
-        type: 'number', min: 0, max: 1000, value: budget,
-        onChange: numberField('subagentDailyBudgetCount', 0, 1000, '子代理日预算'),
-        style: inputStyle
-      }),
+      h('input', numberProps('subagentDailyBudgetCount', 0, 1000, '子代理日预算', budget)),
       h('span', { style: { fontSize: 12, color: VAULT_MUTED } }, '仅自动清扫使用（默认 50 个/天）；手动批量一次最多 2000 个')
     ),
+    h('div', { style: { fontSize: 12, color: VAULT_MUTED, margin: '-4px 0 4px 212px' } },
+      '数字项在失焦或按回车时才保存（输入过程中的中间值不会写进配置）；开关类立即保存。'),
     h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12, color: VAULT_MUTED } },
       h('span', null, '候选 ' + ((s && s.candidates) || 0) + ' 个 / ' + formatBytes(s ? s.candidatesBytes : 0)),
       h('span', null, '已冷存 ' + ((s && s.cold) || 0) + ' 个 / ' + formatBytes(s ? s.coldBytes : 0)),

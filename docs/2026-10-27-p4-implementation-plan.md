@@ -82,3 +82,22 @@ npm run build && node --test tests/ui-contract.test.mjs   # 构建产物一致�
 - 不删除任何子代理会话；不新开删除入口。
 - 不做按工作区策略、不做整树打包、不写 `workspace.json`。
 - 不改宿主 subagent 生命周期，不动运行中的子代理。
+
+## 9. 首次交付失败与重排（2026-10-27 17:27）
+
+**失败事实**：eng-coder 触达 30 分钟后台兜底（`dshBackgroundTimeoutMs=1800000`）被强制结算，未自报任何 stage 失败；最后写入 `lib/engine.js` 17:26:57，收口阶段文档已被改动。**全量 268 项：259 过 / 9 失败**，其中 2 项为 class A 回归（A-12、A1），7 项为 P4 未收口（`scanHeaderFacts` 计数、`orphanEdges` 溢出、`list` class 三值、`pauseReasonS` 四条、`gaps` fail-closed、`subagent` 三路由、UI 契约）。
+
+**根因判断**：不是设计问题，而是**一个 30 分钟批次装不下 20 个文件**；收口阶段没有分批提交点，超时即整批报废。
+
+**已做的防再发**：
+
+1. 2026-10-27 仓库纳入 git（`git init`，首个检查点 `abe6b19`，另有行尾规范化提交 `ff0fee2`）——现在任何一轮都可 `git reset --hard` 回到检查点。
+2. 本计划重排为**两个短批次**（同一设计 token），每批结束必须 `git commit`，把检查点前移：
+
+| 批次 | 范围 | 完成判据 |
+| --- | --- | --- |
+| A | ① 修 2 项 class A 回归（`A-12`、`A1`）；② 修 6 项 P4 非 UI 失败（`scanHeaderFacts` 计数、`orphanEdges` 溢出、`list` class 三值、`pauseReasonS` 四条、`gaps` fail-closed、`subagent` 三路由） | `node --test` 只允许剩下 1 条 UI 契约失败 |
+| B | ③ UI 契约（设置卡 / 双 chip / 文案红线）；④ `npm run build` 一致性；⑤ 全量 `node --test` 全绿；⑥ 文档收口（状态行只允许由架构师指定的文案，禁止自写「已实施」） | `node --test` 零失败 + 构建一致 |
+
+**回退**：批次 A/B 各自提交；失败即 `git reset --hard <上一检查点>`，不需要手工回滚。
+

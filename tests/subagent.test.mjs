@@ -216,7 +216,9 @@ test('P4 FR-P4-2：scanHeaderFacts 只读遍历 sessions，落 origin/delegation
     const before = { 'sub-a': await exists(h.hotDir('sub-a')), 'main-1': await exists(h.hotDir('main-1')) };
     const report = await h.engine.scanHeaderFacts({ force: true });
     assert.equal(report.ok, true, JSON.stringify(report));
-    assert.equal(report.scanned, 3, '只有三个目录能读到 header');
+    // §19.7 口径（2026-10-27 审计 #1）：count 按「成功读到 header 的**目录**」计，含无 DB 行的目录。
+    // 夹具 5 个目录：sub-a / sub-b / main-1（有行）+ unregistered-1（无行）可读，broken-1 进 gaps。
+    assert.equal(report.scanned, 4, '四个目录能读到 header（含无 DB 行的 unregistered-1）');
     assert.equal(h.store.getSession('sub-a').origin, 'subagent');
     assert.equal(h.store.getSession('sub-a').delegation_depth, 1);
     assert.equal(h.store.getSession('sub-a').parent_session, 'main-1');
@@ -233,7 +235,7 @@ test('P4 FR-P4-2：scanHeaderFacts 只读遍历 sessions，落 origin/delegation
     );
     // meta 四项都落库
     assert.equal(Number(h.store.getMeta(SUBSCAN_META.at)), h.clock.now);
-    assert.equal(Number(h.store.getMeta(SUBSCAN_META.count)), 3);
+    assert.equal(Number(h.store.getMeta(SUBSCAN_META.count)), 4);
     assert.deepEqual(JSON.parse(h.store.getMeta(SUBSCAN_META.gaps)).map((gap) => gap.id), ['broken-1']);
     assert.deepEqual(JSON.parse(h.store.getMeta(SUBSCAN_META.orphanEdges)).map((edge) => edge.to), ['main-1']);
     // **不搬移任何文件**（后置条件）
@@ -243,9 +245,17 @@ test('P4 FR-P4-2：scanHeaderFacts 只读遍历 sessions，落 origin/delegation
     // 快照读面
     const snapshot = h.engine.subscanSnapshot();
     assert.equal(snapshot.fresh, true);
-    assert.equal(snapshot.count, 3);
+    assert.equal(snapshot.count, 4);
     assert.equal(snapshot.refsIncomplete, true, 'gaps 非空 ⇒ 引用快照不可信（fail-closed）');
     assert.equal(snapshot.gaps.length, 1);
+    // §19.7 自检关系（2026-10-27 审计 #1）：count（读到 header 的目录）+ gaps（读不到的目录）
+    // 恒等于本次扫描到的目录总数（夹具 5 个目录 = 4 可读 + 1 坏）。
+    assert.equal(report.count + report.gaps.length, 5, 'count + gaps = 扫描到的目录总数');
+    // /status.subagent 必须同时给 count 与 gaps（设计档 §19.7 明确点名这两个字段）
+    const status = await h.engine.subagentStatus({});
+    assert.equal(status.count, 4, '/status.subagent.count = 成功读到 header 的目录数');
+    assert.deepEqual(status.gaps.map((gap) => gap.id), ['broken-1'], '/status.subagent.gaps 逐条列出读不到的目录');
+    assert.equal(status.count + status.gaps.length, 5, 'status 的 count + gaps 也要等于扫描到的目录总数');
   } finally {
     await h.dispose();
   }

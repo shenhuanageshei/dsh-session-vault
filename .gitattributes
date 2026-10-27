@@ -1,0 +1,3 @@
+# 统一行尾：仓库内一律 LF（Windows 检出也不转换），
+# 否则 lib/client.js 在克隆后会被转成 CRLF，导致 ui-contract 字节比对失败。
+* text=auto eol=lf

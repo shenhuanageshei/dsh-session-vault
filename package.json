@@ -1,0 +1,40 @@
+{
+  "name": "dsh-session-vault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "会话保险库：把 DSH「归档」升级为可配置冷存储（迁移/恢复/冷索引），DSH Web 插件",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib",
+    "src",
+    "scripts",
+    "tools",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0",
+    "node": ">=22.15.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "spike": "node tools/spike.mjs",
+    "restore": "node tools/vault-restore.mjs"
+  },
+  "license": "MIT"
+}

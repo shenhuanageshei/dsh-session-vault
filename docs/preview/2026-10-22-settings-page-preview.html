@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会话保险库 · 设置页设计预览（dsh-session-vault v0.1）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1115; --panel:#171a21; --panel2:#1d212b; --border:#2a2f3c; --border2:#39404f;
+  --text:#e7eaf0; --muted:#9aa3b5; --faint:#6b7487;
+  --accent:#4f7cff; --accent-weak:rgba(79,124,255,.14);
+  --ok:#34d399; --ok-weak:rgba(52,211,153,.13);
+  --warn:#fbbf24; --warn-weak:rgba(251,191,36,.13);
+  --err:#f87171; --err-weak:rgba(248,113,113,.13);
+  --cold:#38bdf8; --cold-weak:rgba(56,189,248,.13);
+  --sel:rgba(79,124,255,.09);
+}
+body[data-theme=light]{
+  --bg:#e9ecf2; --panel:#ffffff; --panel2:#f4f6fa; --border:#dde2ec; --border2:#c6cddd;
+  --text:#1b2233; --muted:#57607a; --faint:#8a93a8; --sel:rgba(79,124,255,.06);
+}
+body{font:13px/1.6 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text);padding:16px}
+.banner{max-width:1180px;margin:0 auto 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:9px 14px;color:var(--muted);font-size:12.5px}
+.banner b{color:var(--text)}
+.banner .sp{flex:1}
+.tbtn{background:var(--panel2);border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:4px 10px;cursor:pointer;font-size:12px}
+.tbtn:hover{border-color:var(--accent)}
+.stage{max-width:1180px;margin:0 auto}
+.dialog{display:grid;grid-template-columns:198px minmax(0,1fr) auto;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.35);min-height:660px}
+.nav{border-right:1px solid var(--border);padding:16px 10px;background:var(--panel2)}
+.nav h2{font-size:11px;color:var(--faint);letter-spacing:.12em;padding:0 10px 8px}
+.nav a{display:block;padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer;font-size:13px;margin-bottom:2px}
+.nav a:hover{color:var(--text);background:var(--panel)}
+.nav a.on{background:var(--accent-weak);color:var(--text);font-weight:600}
+.nav .tip{margin-top:20px;padding:0 10px;font-size:11px;color:var(--faint);line-height:1.7}
+.body{padding:18px 20px;overflow:auto}
+.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.head h1{font-size:17px}
+.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:3px}
+.tabs button{border:0;background:transparent;color:var(--muted);padding:5px 14px;border-radius:7px;cursor:pointer;font-size:12.5px}
+.tabs button.on{background:var(--panel);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.22)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+.stat{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.stat .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11.5px;color:var(--muted)}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.search{flex:1;min-width:230px;display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:7px 12px}
+.search input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:13px}
+.chips{display:flex;gap:6px}
+.chip{border:1px solid var(--border2);background:transparent;color:var(--muted);border-radius:99px;padding:4px 12px;cursor:pointer;font-size:12px}
+.chip.on{background:var(--accent-weak);border-color:var(--accent);color:var(--text)}
+select.sort{background:var(--panel2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:6px 8px;font-size:12px}
+.note{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);border-left:3px solid var(--accent);background:var(--panel2);border-radius:8px;padding:8px 12px;margin-bottom:10px;color:var(--muted);font-size:12.5px}
+.note .x{cursor:pointer;color:var(--faint);margin-left:auto;padding:0 4px}
+.note .x:hover{color:var(--text)}
+.progress{height:4px;background:var(--border);border-radius:99px;overflow:hidden;flex:1;min-width:120px;max-width:240px}
+.progress i{display:block;height:100%;background:var(--accent);width:36%;transition:width .6s}
+.list{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:34px minmax(0,1fr) 84px 92px 108px 168px;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row:not(.head-row):hover{background:var(--panel2)}
+.row.selected{background:var(--sel)}
+.row.head-row{background:var(--panel2);color:var(--faint);font-size:11.5px}
+.cell-title{min-width:0}
+.cell-title .t{display:flex;align-items:center;gap:6px;font-weight:600}
+.cell-title .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell-title .w{font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{font-size:10.5px;border-radius:5px;padding:1px 6px;flex:none}
+.tag.cold{background:var(--cold-weak);color:var(--cold)}
+.tag.hot{background:var(--warn-weak);color:var(--warn)}
+.tag.fill{background:transparent;border:1px solid var(--border2);color:var(--faint)}
+.mono{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.act{border:1px solid var(--border2);background:transparent;color:var(--muted);border-radius:7px;padding:3px 10px;cursor:pointer;font-size:12px;white-space:nowrap}
+.act:hover{color:var(--text);border-color:var(--accent)}
+.act.pri{background:var(--accent-weak);border-color:var(--accent);color:var(--text)}
+.act.ok{color:var(--ok);border-color:var(--ok)}
+.act:disabled{opacity:.45;cursor:default}
+.star{cursor:pointer;color:var(--faint);font-size:14px;background:none;border:0;padding:0 2px}
+.star.on{color:var(--warn)}
+.batch{display:flex;align-items:center;gap:10px;margin-top:10px;padding:9px 12px;background:var(--accent-weak);border:1px dashed var(--accent);border-radius:10px;font-size:12.5px;flex-wrap:wrap}
+.batch .sp{flex:1}
+.errline{font-size:11.5px;color:var(--err);margin-top:2px}
+.empty{padding:52px 0;text-align:center;color:var(--faint)}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite;vertical-align:-1px;margin-right:5px}
+@keyframes rot{to{transform:rotate(360deg)}}
+.drawer{width:300px;max-width:90vw;border-left:1px solid var(--border);background:var(--panel2);padding:16px;overflow:auto}
+.drawer h3{font-size:14px;margin-bottom:4px}
+.drawer .meta{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7}
+.msg{border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:10px;background:var(--panel);font-size:12.5px}
+.msg .who{font-size:11px;color:var(--faint);margin-bottom:4px}
+.msg.user{border-left:3px solid var(--accent)}
+.msg.asst{border-left:3px solid var(--ok)}
+.drawer .foot{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+mark{background:transparent;color:var(--accent);font-weight:700}
+body[data-theme=light] mark{color:#1d4ed8}
+.field{margin-bottom:15px;max-width:600px}
+.field label{display:block;font-weight:600;margin-bottom:5px;font-size:12.5px}
+.field .desc{font-size:11.5px;color:var(--faint);margin-top:4px;line-height:1.7}
+.field input[type=text],.field input[type=number]{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;outline:0;font-family:Consolas,monospace}
+.field input[type=number]{font-variant-numeric:tabular-nums}
+.field input:focus{border-color:var(--accent)}
+.field .err{color:var(--err);font-size:11.5px;margin-top:4px}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.switch .track{width:36px;height:20px;border-radius:99px;background:var(--border2);position:relative;transition:.15s;flex:none}
+.switch .track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--panel);transition:.15s}
+.switch.on .track{background:var(--accent)}
+.switch.on .track::after{left:18px}
+.row2{display:flex;gap:14px;flex-wrap:wrap}
+.row2 .field{flex:1;min-width:220px}
+.savebar{display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.btn{background:var(--accent);border:0;color:#fff;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600}
+.toast-wrap{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:50;max-width:380px}
+.toast{background:var(--panel);border:1px solid var(--border2);border-left:3px solid var(--ok);border-radius:9px;padding:9px 14px;font-size:12.5px;box-shadow:0 6px 24px rgba(0,0,0,.4);animation:pop .18s}
+.toast.warn{border-left-color:var(--warn)}
+@keyframes pop{from{transform:translateY(6px);opacity:0}}
+.about h3{margin:18px 0 8px;font-size:14px}
+.about h3:first-child{margin-top:0}
+.about ul,.about ol{padding-left:22px;color:var(--muted)}
+.about li{margin-bottom:6px}
+.about table{width:100%;border-collapse:collapse;margin:8px 0 4px;font-size:12.5px}
+.about th,.about td{border:1px solid var(--border);padding:7px 10px;text-align:left;color:var(--muted);vertical-align:top}
+.about th{color:var(--text);background:var(--panel2)}
+.about .callout{border:1px solid var(--border);border-left:3px solid var(--warn);background:var(--panel2);border-radius:8px;padding:10px 14px;color:var(--muted);margin-top:8px}
+@media (max-width:1000px){
+  .dialog{grid-template-columns:1fr}
+  .nav{display:flex;flex-wrap:wrap;gap:4px;border-right:0;border-bottom:1px solid var(--border)}
+  .nav h2,.nav .tip{display:none}
+  .nav a{margin:0}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .drawer{position:fixed;right:0;top:0;bottom:0;z-index:40;box-shadow:-8px 0 40px rgba(0,0,0,.5)}
+  .row{grid-template-columns:28px minmax(0,1fr) 84px 150px}
+  .c-size,.c-days,.c-st{display:none}
+}
+</style>
+</head>
+<body>
+<div class="banner">
+  <b>设计预览</b>
+  <span>dsh-session-vault 设置页 · v0.1 · 2026-10-22 · 数据为模拟（刷新页面重置）· 可交互：tab / 搜索 / 筛选 / 勾选批量 / 迁移 / 恢复 / 预览抽屉 / 设置表单</span>
+  <span class="sp"></span>
+  <button class="tbtn" id="themeBtn">🌓 亮色</button>
+</div>
+<div class="stage">
+ <div class="dialog">
+  <aside class="nav">
+    <h2>设置</h2>
+    <a>通用</a><a>外观</a><a>模型与供应商</a><a>插件</a><a class="on">会话保险库</a><a>快捷键</a><a>关于</a>
+    <div class="tip">插件注入位：settings.section slot<br>order 约 210（排在「插件」之后）<br>不占用主侧栏入口</div>
+  </aside>
+  <main class="body">
+    <div class="head">
+      <h1>会话保险库</h1>
+      <div class="tabs">
+        <button class="on" data-tab="sessions">归档会话</button>
+        <button data-tab="settings">设置</button>
+        <button data-tab="about">说明</button>
+      </div>
+    </div>
+
+    <section id="tab-sessions">
+      <div class="stats">
+        <div class="stat"><div class="v" id="stArch">–</div><div class="l">归档会话</div></div>
+        <div class="stat"><div class="v" id="stCold">–</div><div class="l">冷存储</div></div>
+        <div class="stat"><div class="v" id="stUsed">–</div><div class="l">冷存占用</div></div>
+        <div class="stat"><div class="v" id="stThr">–</div><div class="l">自动迁移阈值</div></div>
+        <div class="stat" title="存量归档的 archivedAt 在插件首次启动时回填为当天，需满阈值天数后才进入自动迁移；手动迁移不受此限制"><div class="v" id="stToday">–</div><div class="l">今天可自动迁移</div></div>
+      </div>
+      <div class="note" id="idxNote">
+        <span>全文索引构建中 <b id="idxN">42</b>/118</span>
+        <div class="progress"><i id="idxBar"></i></div>
+        <span class="faint">列表已可用（registry 元数据）；搜正文需等构建完成</span>
+        <span class="x" id="idxClose">✕</span>
+      </div>
+      <div class="toolbar">
+        <div class="search"><span>🔍</span><input id="q" placeholder="搜索标题或正文…（热归档 + 冷存储统一自建索引）"></div>
+        <div class="chips" id="chips">
+          <button class="chip on" data-f="all">全部</button>
+          <button class="chip" data-f="hot">热归档</button>
+          <button class="chip" data-f="cold">冷存储</button>
+          <button class="chip" data-f="fav">收藏</button>
+        </div>
+        <select class="sort" id="sort">
+          <option value="recent">按归档时间（新→旧）</option>
+          <option value="old">按归档时间（旧→新）</option>
+          <option value="big">按大小（大→小）</option>
+          <option value="title">按标题</option>
+        </select>
+      </div>
+      <div class="list" id="list"></div>
+      <div class="batch" id="batch" hidden>
+        已选 <b id="selN">0</b> 项 <span class="sp"></span>
+        <button class="act pri" id="bMig">迁移所选</button>
+        <button class="act ok" id="bRes">恢复所选</button>
+        <button class="act" id="bFav">收藏所选</button>
+        <button class="act" id="bClr">清除选择</button>
+      </div>
+    </section>
+
+    <section id="tab-settings" hidden>
+      <div class="field">
+        <label>冷存储目录（coldRoot）</label>
+        <input type="text" id="coldRoot" value="<DSH_HOME>\session-vault\cold">
+        <div class="desc">必须位于 ~/.dsh/sessions <b>之外</b>（放进去会让宿主启动期抛错）；默认与 sessions 同卷（rename 原子搬移）。变更只影响之后的迁移，已迁数据不自动搬。</div>
+        <div class="err" id="coldRootErr" hidden></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>归档多少天后自动迁移（天）</label><input type="number" id="threshold" value="14" min="1" max="365"><div class="desc">存量 118 个归档的 archivedAt 在插件首次启动时回填，默认再等一个周期。</div></div>
+        <div class="field"><label>清扫间隔（分钟）</label><input type="number" id="sweep" value="30" min="5"><div class="desc">启动 60 秒后首次扫描，之后按此间隔。</div></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>自动迁移</label><div class="switch on" id="swAuto"><div class="track"></div></div><div class="desc">关闭后只能手动迁移；清扫仍会刷新 archivedAt 与对账。</div></div>
+        <div class="field"><label>允许跨卷搬移</label><div class="switch" id="swCross"><div class="track"></div></div><div class="desc">跨卷 = 复制 + 校验 + 删除（非原子），崩溃窗口由 marker 兜底；默认关。</div></div>
+      </div>
+      <div class="field"><label>批量迁移并发数</label><input type="number" id="conc" value="1" min="1" max="4"><div class="desc">P1 阶段固定串行（并发 1），此处预留。</div></div>
+      <div class="savebar"><button class="btn" id="save">保存</button><span class="faint">运行期配置：即改即生效，下一次清扫起作用（无需重启 DSH；安装/卸载插件才需要重启）</span></div>
+    </section>
+
+    <section id="tab-about" hidden class="about">
+      <h3>它动什么、不动什么</h3>
+      <ul>
+        <li>只搬 <b>已归档</b> 会话的会话目录（~/.dsh/sessions 下）；你的 <workspace-root>\* 项目文件一个字节不动。</li>
+        <li>未归档会话连读都不读（I-2）；活跃（有运行中回合）会话永不迁移（I-3）。</li>
+        <li>搬迁 = 整目录原子 rename（同卷），字节数与 sha256 与源一致，manifest 各记一行审计（I-5）。</li>
+        <li>任何失败都不删源；永久删除（P3 阶段）也先进回收站（I-8）。</li>
+        <li>插件卸载后冷数据仍可按 manifest 手工搬回（目录同构 + 纯文本 manifest，I-10）。</li>
+      </ul>
+      <h3>时间线</h3>
+      <table>
+        <tr><th>时间点</th><th>会发生什么</th></tr>
+        <tr><td>插件安装当天</td><td>只建空索引与配置；0 个会话被搬；归档时间回填</td></tr>
+        <tr><td>第 1~14 天</td><td>自动清扫每 30 分钟跑一次，但候选恒为 0（阈值未到）</td></tr>
+        <tr><td>第 14 天后</td><td>仅「仍归档 + 非活跃 + 校验通过」的会话被搬；搬前搬后都有复检</td></tr>
+        <tr><td>任意时刻</td><td>手动「立即迁移」才会提前搬；「恢复」随时可用</td></tr>
+        <tr><td>恢复之后</td><td>文件回原 projectKey，工作区重新挂上，取消归档，可继续对话</td></tr>
+      </table>
+      <h3>恢复一个冷会话（7 步，全自动）</h3>
+      <ol>
+        <li>在「会话保险库」里搜索 / 预览该会话；</li>
+        <li>点「恢复」；</li>
+        <li>按 manifest 与 header.cwd 复算原 projectKey，整目录搬回；</li>
+        <li>persistence.stat 校验可见（身份校验）；</li>
+        <li>attachSession 挂回工作区；</li>
+        <li>unarchiveSession 取消归档；</li>
+        <li>会话出现在原工作区，可继续对话。</li>
+      </ol>
+      <div class="callout"><b>唯一可能丢数据的路径</b>：在冷目录之外手工删除文件。插件自身的设计原则是「任何失败都不删源」。</div>
+    </section>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+ </div>
+</div>
+<div class="toast-wrap" id="toasts"></div>
+<script>
+var $=function(s){return document.querySelector(s)};
+function $$(s){return Array.prototype.slice.call(document.querySelectorAll(s))}
+var SESSIONS=[
+{id:'s01',title:'GFW 采集器 v3 重构',ws:'workspace-intel',size:12.1,days:30,st:'cold',fav:true,fill:0,err:'',
+ user:'采集器 v3 的限速策略要不要改成令牌桶？现在固定间隔被 Cloudflare 拦了不少。',
+ asst:'建议改成令牌桶 + 指数退避。按域名分桶，整体上限 8 rps，429 时退避到 2 分钟；上次实测拦截率从 37% 降到 2%。'},
+{id:'s02',title:'样本流水线：Emotet 批量脱壳',ws:'workspace-scan',size:34.5,days:2,st:'hot',fav:false,fill:0,err:'',
+ user:'这批 200 个 Emotet 样本跑完脱壳后，报告里 loader 配置怎么汇总？',
+ asst:'用 batch 模式输出 JSON，再按 C2 配置去重聚合；200 个样本里有 7 个是重复投递，实际家族 3 个。'},
+{id:'s03',title:'上下文预算与分层记忆设计',ws:'workspace-agent',size:6.5,days:41,st:'cold',fav:false,fill:0,err:'',
+ user:'上下文预算应该按 token 还是按轮次切？',
+ asst:'按 token 分层更稳：文件走按需读，摘要走压缩态，只有当前任务走全量；预算到 70% 触发压缩。'},
+{id:'s04',title:'威胁情报周报 2026-W42',ws:'workspace-intel',size:8.9,days:5,st:'hot',fav:true,fill:0,err:'',
+ user:'本周重点盯哪几个家族？',
+ asst:'LockBit 变体活动上升 40%；另有一起在野利用建议先出快报。'},
+{id:'s05',title:'CLI 帮助文档改版',ws:'workspace-scan',size:2.2,days:9,st:'hot',fav:false,fill:1,err:'',
+ user:'帮助文档太长了，能不能按场景重组？',
+ asst:'按「装样本、出报告、接 LLM」三个场景重排，参数参考折叠到附录。'},
+{id:'s06',title:'agent 记忆分层实验记录',ws:'workspace-agent',size:15.7,days:21,st:'cold',fav:false,fill:0,err:'',
+ user:'把记忆分成 hot/warm/cold 三层的实验结果如何？',
+ asst:'warm 层命中率达到 81%，cold 层基本只在跨天任务用到；分层后平均上下文占用降了 35%。'},
+{id:'s07',title:'冷存检索机制调研（本插件的前身）',ws:'dsh-desktop',size:9.6,days:1,st:'hot',fav:false,fill:0,err:'',
+ user:'官方全文索引为什么不能复用？',
+ asst:'它在对账时会把「文件不在了」的行直接 DELETE，冷会话一行不剩；而且按 persistence.list() 驱动，天然看不见冷目录。'},
+{id:'s08',title:'勒索家族 TTP 梳理',ws:'workspace-intel',size:44.0,days:33,st:'cold',fav:true,fill:0,err:'',
+ user:'把近半年勒索样本的 TTP 按 ATT&CK 矩阵归一。',
+ asst:'共归纳 62 个技术点，集中在 Impact 与 Credential Access 两个战术；横向移动比重比去年高。'},
+{id:'s09',title:'YARA 规则批量验证',ws:'workspace-scan',size:5.4,days:12,st:'hot',fav:false,fill:0,err:'',
+ user:'这批 YARA 规则的误报率怎么样？',
+ asst:'在 4 万个干净文件上跑，3 条规则误报，都是 unpacker 段特征太宽导致；已给出收紧建议。'},
+{id:'s10',title:'沙箱逃逸检测思路',ws:'workspace-intel',size:3.1,days:16,st:'hot',fav:false,fill:1,err:'',
+ user:'沙箱检测有哪些新姿势？',
+ asst:'硬件指纹之外，时间炸弹 + 大循环检测的组合最近多了；建议报告里加「反沙箱行为」一节。'},
+{id:'s11',title:'工具调用审计日志设计',ws:'workspace-agent',size:7.8,days:28,st:'hot',fav:false,fill:0,err:'校验失败：目录名与 projectKey(header.cwd) 不一致（I-4），已跳过，可重试',
+ user:'工具调用审计要记哪些字段？',
+ asst:'记工具名、参数摘要、返回码、耗时与审批链；敏感参数脱敏后落 JSONL。'},
+{id:'s12',title:'插件面 API 调研备忘',ws:'dsh-desktop',size:1.4,days:3,st:'hot',fav:false,fill:0,err:'',
+ user:'设置页 slot 怎么注入？',
+ asst:'client 侧 ctx.slots 注入 settings.section，宿主端零配套；bundle 走 dsh.bundle.patch。'}
+];
+var state={q:'',f:'all',sort:'recent',sel:{},drawer:null};
+function byId(id){for(var i=0;i<SESSIONS.length;i++){if(SESSIONS[i].id===id)return SESSIONS[i]}return null}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function hl(s){var q=state.q.trim();var t=esc(s);if(!q)return t;var i=t.toLowerCase().indexOf(q.toLowerCase());if(i<0)return t;return t.slice(0,i)+'<mark>'+t.slice(i,i+q.length)+'</mark>'+t.slice(i+q.length)}
+function fmtSize(mb){return mb>=1024?(mb/1024).toFixed(2)+' GB':mb.toFixed(1)+' MB'}
+function daysAgo(d){return d===0?'今天':d+' 天前'}
+function visible(){return SESSIONS.filter(function(s){
+  if(state.f==='hot'&&s.st!=='hot'&&s.st!=='migrating')return false;
+  if(state.f==='cold'&&s.st!=='cold')return false;
+  if(state.f==='fav'&&!s.fav)return false;
+  if(state.q){var q=state.q.toLowerCase();var hay=(s.title+' '+s.ws+' '+s.user+' '+s.asst).toLowerCase();if(hay.indexOf(q)<0)return false}
+  return true}).sort(function(a,b){
+  if(state.sort==='recent')return a.days-b.days;
+  if(state.sort==='old')return b.days-a.days;
+  if(state.sort==='big')return b.size-a.size;
+  return a.title.localeCompare(b.title,'zh')})}
+function actBtn(a,id,label,cls){return '<button class="act '+(cls||'')+'" data-act="'+a+'" data-id="'+id+'">'+label+'</button>'}
+function renderStats(){
+  var n=SESSIONS.length,cold=0,used=0;
+  SESSIONS.forEach(function(s){if(s.st==='cold'){cold++;used+=s.size}});
+  $('#stArch').textContent=n;$('#stCold').textContent=cold;$('#stUsed').textContent=fmtSize(used);
+  $('#stThr').textContent=(($('#threshold').value||14))+' 天';
+  $('#stToday').textContent='0';
+}
+function renderList(){
+  var list=$('#list'),rows=visible();
+  if(rows.length===0){list.innerHTML='<div class="empty">没有符合条件的会话</div>';renderBatch();return}
+  var h='<div class="row head-row"><label><input type="checkbox" id="selAll"></label><span>会话</span><span class="c-size">大小</span><span class="c-days">归档于</span><span class="c-st">状态</span><span style="text-align:right">操作</span></div>';
+  rows.forEach(function(s){
+    var st,acts;
+    if(s.st==='migrating'){st='<span class="faint"><span class="spin"></span>迁移中 '+(s.prog||0)+'%</span>';acts='<button class="act" disabled>迁移中…</button>'}
+    else if(s.st==='restoring'){st='<span class="faint"><span class="spin"></span>恢复中 '+(s.prog||0)+'%</span>';acts='<button class="act" disabled>恢复中…</button>'}
+    else if(s.st==='cold'){st='<span class="tag cold">冷存储</span>';acts=actBtn('prev',s.id,'预览','')+actBtn('res',s.id,'恢复','ok')}
+    else{st='<span class="tag hot">热归档</span>';acts=actBtn('prev',s.id,'预览','')+(s.err?actBtn('retry',s.id,'重试','pri'):actBtn('mig',s.id,'迁移','pri'))}
+    h+='<div class="row'+(state.sel[s.id]?' selected':'')+'">'
+      +'<label><input type="checkbox" data-sel="'+s.id+'"'+(state.sel[s.id]?' checked':'')+'></label>'
+      +'<div class="cell-title"><div class="t"><button class="star'+(s.fav?' on':'')+'" data-fav="'+s.id+'" title="收藏">'+(s.fav?'★':'☆')+'</button><span class="name">'+hl(s.title)+'</span>'+(s.fill?'<span class="tag fill">回填</span>':'')+'</div><div class="w">'+esc(s.ws)+' · '+s.id+'</div>'+(s.err&&s.st==='hot'?'<div class="errline">'+esc(s.err)+'</div>':'')+'</div>'
+      +'<span class="c-size mono muted">'+fmtSize(s.size)+'</span>'
+      +'<span class="c-days mono muted">'+daysAgo(s.days)+'</span>'
+      +'<span class="c-st">'+st+'</span>'
+      +'<span class="acts">'+acts+'</span></div>';
+  });
+  list.innerHTML=h;
+  var all=$('#selAll');
+  if(all){all.checked=rows.every(function(s){return !!state.sel[s.id]});
+    all.addEventListener('change',function(){var v=all.checked;rows.forEach(function(s){if(v)state.sel[s.id]=1;else delete state.sel[s.id]});renderList()})}
+  renderBatch();
+}
+function renderBatch(){var n=Object.keys(state.sel).length;var b=$('#batch');b.hidden=(n===0);$('#selN').textContent=n}
+function toast(msg,kind){var w=$('#toasts');var t=document.createElement('div');t.className='toast'+(kind?' '+kind:'');t.textContent=msg;w.appendChild(t);setTimeout(function(){t.remove()},4600)}
+function tick(s,done){var iv=setInterval(function(){s.prog=(s.prog||0)+25;renderList();if(s.prog>=100){clearInterval(iv);done()}},350)}
+function migrate(s){if(s.st!=='hot')return;s.st='migrating';s.prog=0;renderList();renderStats();
+  tick(s,function(){s.st='cold';delete state.sel[s.id];renderList();renderStats();toast('已迁入冷存储：'+s.title+'（整目录 rename，manifest 记一行，sha256 校验通过）')})}
+function restore(s){if(s.st!=='cold')return;s.st='restoring';s.prog=0;renderList();
+  tick(s,function(){var i=SESSIONS.indexOf(s);if(i>=0)SESSIONS.splice(i,1);delete state.sel[s.id];
+    if(state.drawer===s.id){$('#drawer').hidden=true;state.drawer=null}
+    renderList();renderStats();toast('已恢复到原工作区并取消归档：'+s.title+'（回到官方会话列表，可继续对话）')})}
+function openDrawer(s){state.drawer=s.id;var d=$('#drawer');d.hidden=false;
+  d.innerHTML='<h3>'+esc(s.title)+'</h3>'
+   +'<div class="meta">'+esc(s.ws)+' · '+fmtSize(s.size)+' · '+(s.st==='cold'?'已冷存':'热归档')+' · 归档于 '+daysAgo(s.days)+'<br>'+s.id+'</div>'
+   +'<div class="msg user"><div class="who">用户 · 最近一条</div>'+hl(s.user)+'</div>'
+   +'<div class="msg asst"><div class="who">助手 · 最近一条</div>'+hl(s.asst)+'</div>'
+   +'<div class="meta faint">预览只读：不恢复、不打开会话、不改任何文件；正文来自自建冷索引（FTS）。</div>'
+   +'<div class="foot">'+(s.st==='cold'?'<button class="act ok" id="dRes">恢复到原工作区</button>':'')+'<button class="act" id="dClose">关闭（Esc）</button></div>';
+  var r=$('#dRes');if(r)r.addEventListener('click',function(){d.hidden=true;restore(s)});
+  $('#dClose').addEventListener('click',function(){d.hidden=true;state.drawer=null});
+}
+$('#list').addEventListener('click',function(e){var t=e.target;
+  if(t.dataset&&t.dataset.act){var s=byId(t.dataset.id);if(!s)return;
+    if(t.dataset.act==='prev')openDrawer(s);
+    else if(t.dataset.act==='mig')migrate(s);
+    else if(t.dataset.act==='res')restore(s);
+    else if(t.dataset.act==='retry'){s.err='';renderList();toast('复检通过：「'+s.title+'」已恢复可迁移')}
+    return}
+  if(t.dataset&&t.dataset.fav){var s2=byId(t.dataset.fav);if(s2){s2.fav=!s2.fav;renderList()}}});
+$('#list').addEventListener('change',function(e){var t=e.target;if(t.dataset&&t.dataset.sel){if(t.checked)state.sel[t.dataset.sel]=1;else delete state.sel[t.dataset.sel];renderList()}});
+$('#q').addEventListener('input',function(){state.q=this.value;renderList()});
+$$('#chips .chip').forEach(function(c){c.addEventListener('click',function(){state.f=c.dataset.f;$$('#chips .chip').forEach(function(x){x.classList.toggle('on',x===c)});renderList()})});
+$('#sort').addEventListener('change',function(){state.sort=this.value;renderList()});
+$('#bMig').addEventListener('click',function(){var ids=Object.keys(state.sel);
+  var t=SESSIONS.filter(function(s){return ids.indexOf(s.id)>=0&&s.st==='hot'&&!s.err});
+  var skip=ids.length-t.length;
+  t.forEach(function(s,i){setTimeout(function(){migrate(s)},i*1100)});
+  if(skip>0)toast('批量迁移：'+t.length+' 个已排队（串行），'+skip+' 个不可迁移已跳过（冷存储/校验失败）','warn')});
+$('#bRes').addEventListener('click',function(){var ids=Object.keys(state.sel);
+  var t=SESSIONS.filter(function(s){return ids.indexOf(s.id)>=0&&s.st==='cold'});
+  t.forEach(function(s,i){setTimeout(function(){restore(s)},i*1100)});
+  if(t.length===0)toast('所选里没有冷存储会话，无需恢复','warn')});
+$('#bFav').addEventListener('click',function(){Object.keys(state.sel).forEach(function(id){var s=byId(id);if(s)s.fav=true});renderList();toast('已收藏所选会话（收藏不迁移，常驻热索引）')});
+$('#bClr').addEventListener('click',function(){state.sel={};renderList()});
+$$('.tabs button').forEach(function(b){b.addEventListener('click',function(){
+  $$('.tabs button').forEach(function(x){x.classList.toggle('on',x===b)});
+  ['sessions','settings','about'].forEach(function(t){$('#tab-'+t).hidden=(t!==b.dataset.tab)})})});
+$('#themeBtn').addEventListener('click',function(){var b=document.body;var light=b.dataset.theme==='light';
+  if(light){delete b.dataset.theme;this.textContent='🌓 亮色'}else{b.dataset.theme='light';this.textContent='🌓 深色'}});
+$$('#tab-settings .switch').forEach(function(sw){sw.addEventListener('click',function(){sw.classList.toggle('on');
+  if(sw.id==='swCross'&&sw.classList.contains('on'))toast('已允许跨卷搬移：复制 + 校验 + 删除（非原子），崩溃窗口由 marker 兜底','warn')})});
+$('#threshold').addEventListener('input',renderStats);
+$('#save').addEventListener('click',function(){var v=$('#coldRoot').value;var err=$('#coldRootErr');
+  if(/[\\/]\.dsh[\\/]sessions([\\/]|$)/i.test(v)){err.hidden=false;err.textContent='冷目录不能位于 ~/.dsh/sessions 之内：会让 persistence.list() 在启动期抛错（设计档 C-5 / 不变量 I-9）。';toast('未保存：冷目录位置不合法','warn');return}
+  err.hidden=true;renderStats();toast('已保存：即改即生效，下一次清扫起作用（无需重启 DSH）')});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var d=$('#drawer');if(d)d.hidden=true}});
+$('#idxClose').addEventListener('click',function(){var n=$('#idxNote');if(n)n.remove()});
+var idx=42;
+var iv2=setInterval(function(){var n=$('#idxNote');if(!n){clearInterval(iv2);return}
+  if(idx>=118){clearInterval(iv2);n.remove();toast('全文索引构建完成：118/118（正文约 27 MB）——现在可搜正文');return}
+  idx+=13;if(idx>118)idx=118;$('#idxN').textContent=idx;$('#idxBar').style.width=Math.round(idx/118*100)+'%'},1800);
+renderStats();renderList();
+</script>
+</body>
+</html>

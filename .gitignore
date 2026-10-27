@@ -1,0 +1,14 @@
+# 依赖（本仓零依赖，仍防误入）
+node_modules/
+
+# 临时文件 / 半成品
+*.tmp
+*.part
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 注意：lib/client.js 是交付产物（构建生成），必须入库；
+# 它由 npm run build 生成，tests/ui-contract.test.mjs 会逐字节比对。

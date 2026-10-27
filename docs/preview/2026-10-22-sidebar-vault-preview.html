@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>会话保险库 · 全局搜索预览</title>
+<style>
+:root{color-scheme:light;--background:#f7f8fa;--foreground:#171a21;--card:#ffffff;--card-foreground:#171a21;--muted-foreground:#667085;--border:#e4e7ec;--primary:#2f6fed;--primary-foreground:#ffffff;--font-sans:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;--font-display:var(--font-sans);--font-mono:ui-monospace,Consolas,monospace}
+@media (prefers-color-scheme: dark){:root{color-scheme:dark;--background:#0f1115;--foreground:#e6e8ee;--card:#171a21;--card-foreground:#e6e8ee;--muted-foreground:#8b93a7;--border:#2a2f3a;--primary:#6b9bff;--primary-foreground:#0b0d12}}
+body{margin:0;background:var(--background);color:var(--foreground)}
+</style></head><body>
+<div id="svx2">
+<style>
+#svx2{--r:10px;font-family:var(--font-sans,system-ui,sans-serif);color:var(--foreground);background:var(--background);min-height:100vh}
+#svx2 *{box-sizing:border-box}
+#svx2 .pv-note{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;padding:6px 14px;font-size:11.5px;color:var(--muted-foreground);background:color-mix(in oklab,var(--primary) 8%,var(--background));border-bottom:1px solid var(--border)}
+#svx2 .pv-note b{color:var(--primary)}
+#svx2 .shell{display:grid;grid-template-columns:276px minmax(0,1fr);min-height:calc(100vh - 30px)}
+#svx2 .rail{background:color-mix(in oklab,var(--background) 72%,var(--card));border-right:1px solid var(--border);padding:12px 10px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+#svx2 .brand{font-weight:700;font-size:14px;padding:6px 8px 10px}
+#svx2 .newbtn{border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--foreground);font-size:12.5px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+#svx2 .newbtn span{color:var(--muted-foreground);font-size:11px}
+#svx2 .panelrow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;color:var(--muted-foreground);cursor:pointer}
+#svx2 .panelrow:hover{background:color-mix(in oklab,var(--primary) 6%,transparent)}
+#svx2 .panelrow.active{background:color-mix(in oklab,var(--primary) 14%,transparent);color:var(--primary);font-weight:600}
+#svx2 .badge{margin-left:auto;font-size:10.5px;background:color-mix(in oklab,var(--primary) 18%,transparent);color:var(--primary);border-radius:999px;padding:1px 6px;font-weight:600}
+#svx2 .wslabel{margin:12px 9px 4px;font-size:10.5px;letter-spacing:.05em;color:var(--muted-foreground);text-transform:uppercase}
+#svx2 .ws{display:flex;justify-content:space-between;padding:5px 9px;font-size:12px;color:var(--muted-foreground)}
+#svx2 .sess{padding:5px 9px 5px 20px;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#svx2 .railfoot{margin-top:auto;border-top:1px solid var(--border);padding-top:8px;display:flex;align-items:center;gap:6px}
+#svx2 .railfoot .panelrow{flex:1}
+#svx2 .searchbtn{width:32px;height:30px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--foreground);cursor:pointer;font-size:14px;line-height:1}
+#svx2 .searchbtn:hover{border-color:color-mix(in oklab,var(--primary) 50%,var(--border))}
+#svx2 .main{padding:16px 22px 28px;min-width:0}
+#svx2 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+#svx2 .crumb{font-size:11.5px;color:var(--muted-foreground)}
+#svx2 h1{font-size:19px;margin:2px 0 0;font-family:var(--font-display,var(--font-sans))}
+#svx2 .tabs{display:flex;gap:4px}
+#svx2 .tab{border:1px solid transparent;background:transparent;color:var(--muted-foreground);padding:6px 11px;border-radius:8px;font-size:13px;cursor:pointer}
+#svx2 .tab.on{background:var(--card);border-color:var(--border);color:var(--foreground);font-weight:600}
+#svx2 .hero{display:flex;gap:10px;align-items:center;margin:14px 0 4px}
+#svx2 .big{flex:1;display:flex;align-items:center;gap:10px;border:1.5px solid color-mix(in oklab,var(--primary) 50%,var(--border));border-radius:12px;padding:0 14px;height:50px;background:var(--card);box-shadow:0 0 0 4px color-mix(in oklab,var(--primary) 9%,transparent)}
+#svx2 .big .ico{font-size:16px;color:var(--primary)}
+#svx2 .big input{border:0;background:transparent;outline:none;flex:1;font-size:15px;color:var(--foreground)}
+#svx2 .big input::placeholder{color:var(--muted-foreground)}
+#svx2 .kbd{font:11px var(--font-mono,monospace);color:var(--muted-foreground);border:1px solid var(--border);border-radius:6px;padding:2px 6px;white-space:nowrap}
+#svx2 .scope{font-size:11.5px;color:var(--muted-foreground);margin:6px 2px 0}
+#svx2 .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:12px 0 4px}
+#svx2 .stat{border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;background:var(--card)}
+#svx2 .stat b{display:block;font-size:18px;font-variant-numeric:tabular-nums;line-height:1.25}
+#svx2 .stat span{font-size:11.5px;color:var(--muted-foreground)}
+#svx2 .stat.warn b{color:var(--primary)}
+#svx2 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0 10px}
+#svx2 .chip{border:1px solid var(--border);background:transparent;color:var(--muted-foreground);border-radius:999px;padding:4px 11px;font-size:12px;cursor:pointer}
+#svx2 .chip.on{color:var(--primary);border-color:color-mix(in oklab,var(--primary) 45%,var(--border));background:color-mix(in oklab,var(--primary) 10%,transparent)}
+#svx2 select.ws{border:1px solid var(--border);background:var(--background);color:var(--foreground);border-radius:8px;padding:5px 8px;font-size:12px}
+#svx2 .body{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+#svx2 .body.with-drawer{grid-template-columns:minmax(0,1fr) 290px}
+#svx2 .table{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+#svx2 .thead,#svx2 .row{display:grid;grid-template-columns:26px minmax(0,1fr) 100px 78px 84px 100px 158px;gap:8px;align-items:center;padding:8px 10px}
+#svx2 .thead{font-size:11px;color:var(--muted-foreground);border-bottom:1px solid var(--border);background:color-mix(in oklab,var(--background) 55%,transparent)}
+#svx2 .row{border-bottom:1px solid var(--border);font-size:13px}
+#svx2 .row:last-child{border-bottom:0}
+#svx2 .row:hover{background:color-mix(in oklab,var(--primary) 5%,transparent)}
+#svx2 .row.sel{background:color-mix(in oklab,var(--primary) 9%,transparent)}
+#svx2 .title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#svx2 .meta{font-size:11.5px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#svx2 .tag{font-size:10.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--border);color:var(--muted-foreground);white-space:nowrap}
+#svx2 .tag.cold{color:var(--primary);border-color:color-mix(in oklab,var(--primary) 45%,var(--border));background:color-mix(in oklab,var(--primary) 8%,transparent)}
+#svx2 .tag.elig{color:light-dark(#92400e,#fbbf24);border-color:color-mix(in oklab,light-dark(#92400e,#fbbf24) 40%,var(--border))}
+#svx2 .tag.hot{color:var(--foreground);background:color-mix(in oklab,var(--foreground) 6%,transparent)}
+#svx2 .acts{display:flex;gap:5px;justify-content:flex-end}
+#svx2 .btn{border:1px solid var(--border);background:var(--card);color:var(--foreground);border-radius:7px;padding:3px 9px;font-size:12px;cursor:pointer;line-height:1.5}
+#svx2 .btn:hover{border-color:color-mix(in oklab,var(--primary) 45%,var(--border))}
+#svx2 .btn.pri{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+#svx2 .btn:disabled{opacity:.5;cursor:not-allowed}
+#svx2 .drawer{border:1px solid var(--border);border-radius:var(--r);padding:12px;background:color-mix(in oklab,var(--background) 55%,var(--card));align-self:start}
+#svx2 .drawer h3{font-size:13px;margin:0 0 2px}
+#svx2 .msg{border:1px solid var(--border);border-radius:8px;padding:8px 9px;margin-top:8px;font-size:12px;line-height:1.55;background:var(--card)}
+#svx2 .msg b{display:block;font-size:10.5px;color:var(--muted-foreground);font-weight:600;margin-bottom:2px}
+#svx2 .bulk{display:none;align-items:center;gap:8px;margin:0 0 9px;padding:7px 10px;border:1px solid color-mix(in oklab,var(--primary) 40%,var(--border));border-radius:8px;background:color-mix(in oklab,var(--primary) 7%,transparent);font-size:12.5px}
+#svx2 .bulk.show{display:flex}
+#svx2 .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:12px}
+#svx2 .field{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+#svx2 .field label{display:block;font-size:12px;font-weight:600;margin-bottom:3px}
+#svx2 .field p{margin:0 0 8px;font-size:11.5px;color:var(--muted-foreground);line-height:1.5}
+#svx2 .field input[type=text],#svx2 .field input[type=number],#svx2 .field select{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--background);color:var(--foreground);font-size:12.5px}
+#svx2 .switch{display:flex;align-items:center;gap:8px;font-size:12.5px}
+#svx2 .switch input{width:16px;height:16px}
+#svx2 .note{grid-column:1/-1;border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--muted-foreground);line-height:1.6}
+#svx2 .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,8px);background:var(--foreground);color:var(--background);font-size:12.5px;padding:7px 14px;border-radius:999px;opacity:0;transition:.2s;pointer-events:none;z-index:60}
+#svx2 .toast.show{opacity:1;transform:translate(-50%,0)}
+#svx2 .overlay{position:fixed;inset:0;background:color-mix(in oklab,var(--foreground) 42%,transparent);display:none;align-items:flex-start;justify-content:center;padding-top:11vh;z-index:50}
+#svx2 .overlay.show{display:flex}
+#svx2 .omodal{width:min(720px,92vw);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 20px 60px color-mix(in oklab,var(--foreground) 25%,transparent)}
+#svx2 .omodal input{width:100%;padding:11px 12px;border:1.5px solid color-mix(in oklab,var(--primary) 45%,var(--border));border-radius:9px;background:var(--background);color:var(--foreground);font-size:15px;outline:none}
+#svx2 .ohint{font-size:11px;color:var(--muted-foreground);margin:7px 2px 4px;display:flex;justify-content:space-between}
+#svx2 .ores{margin-top:6px;max-height:46vh;overflow:auto}
+#svx2 .ores .oitem{display:grid;grid-template-columns:minmax(0,1fr) 140px 76px 66px;gap:8px;padding:8px;border-radius:8px;font-size:12.5px;align-items:center;cursor:pointer}
+#svx2 .ores .oitem:hover{background:color-mix(in oklab,var(--primary) 8%,transparent)}
+#svx2 .empty{padding:26px;text-align:center;color:var(--muted-foreground);font-size:13px}
+#svx2 .hdrchip{position:fixed;right:18px;bottom:18px;z-index:40;display:flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--foreground);font-size:12.5px;cursor:pointer;box-shadow:0 6px 22px color-mix(in oklab,var(--foreground) 14%,transparent)}
+#svx2 .hdrchip:hover{border-color:color-mix(in oklab,var(--primary) 55%,var(--border))}
+#svx2 .hdrchip small{color:var(--muted-foreground);font-size:11px}
+@media (max-width:900px){#svx2 .shell{grid-template-columns:1fr}#svx2 .rail{display:none}#svx2 .stats{grid-template-columns:repeat(2,1fr)}#svx2 .body.with-drawer{grid-template-columns:1fr}}
+</style>
+
+<div class="pv-note"><b>设计预览 v2</b><span>搜索范围 = 所有工作区会话 + 归档 + 冷存；面板顶部大搜索栏 + 全局 Ctrl/Cmd+K。数据为示例。</span><span style="margin-left:auto">可交互</span></div>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">DeepSeek Harness</div>
+    <div class="newbtn">＋ 新建会话 <span>Ctrl+N</span></div>
+    <div class="panelrow">会话</div>
+    <div class="panelrow">插件</div>
+    <div class="panelrow">Cron</div>
+    <div class="panelrow active" id="side-vault">▤ 会话保险库 <span class="badge">48</span></div>
+    <div class="wslabel">工作区</div>
+    <div class="ws"><span>workspace-intel</span><span>46</span></div>
+    <div class="sess">GFW 自产采集器 v3 设计与实现</div>
+    <div class="ws"><span>workspace-scan</span><span>38</span></div>
+    <div class="sess">恶意样本批量分析流水线</div>
+    <div class="ws"><span>workspace-agent</span><span>27</span></div>
+    <div class="sess">bounded-agent 核心重构</div>
+    <div class="railfoot">
+      <div class="panelrow">⚙ 设置</div>
+      <button class="searchbtn" id="quick-open" title="全局搜索（Ctrl+K）">🔍</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="head">
+      <div><div class="crumb">侧栏 → 会话保险库</div><h1>会话保险库</h1></div>
+      <div class="tabs">
+        <button class="tab on" data-tab="list">会话</button>
+        <button class="tab" data-tab="settings">设置</button>
+      </div>
+    </div>
+
+    <section id="pane-list">
+      <div class="hero">
+        <div class="big">
+          <span class="ico">⌕</span>
+          <input id="q" type="text" placeholder="搜索所有会话：标题或正文（所有工作区 · 归档 · 冷存）…" />
+          <span class="kbd">Ctrl K</span>
+        </div>
+      </div>
+      <div class="scope">覆盖 1785 个会话 · 25 个工作区 · 热 1667 / 归档 118 / 冷存 1 · 索引增量更新</div>
+
+      <div class="stats">
+        <div class="stat"><b>1785</b><span>会话总数</span></div>
+        <div class="stat"><b>118</b><span>已归档</span></div>
+        <div class="stat"><b id="st-cold">1</b><span>冷存储</span></div>
+        <div class="stat warn"><b>48</b><span>可迁移 · 282.8 MB</span></div>
+        <div class="stat"><b id="st-auto">关</b><span>自动迁移</span></div>
+      </div>
+
+      <div class="toolbar">
+        <button class="chip on" data-f="all">全部</button>
+        <button class="chip" data-f="hotall">热会话</button>
+        <button class="chip" data-f="elig">可迁移</button>
+        <button class="chip" data-f="cold">冷存储</button>
+        <select class="ws" id="wsel">
+          <option value="all">所有工作区</option>
+          <option>workspace-intel</option>
+          <option>workspace-scan</option>
+          <option>workspace-agent</option>
+          <option>dsh-desktop</option>
+        </select>
+      </div>
+
+      <div class="bulk" id="bulk"><span id="bulk-n">已选 0 项</span><span style="flex:1"></span>
+        <button class="btn" data-bulk="migrate">迁移</button>
+        <button class="btn" data-bulk="restore">恢复</button>
+        <button class="btn" data-bulk="clear">清除</button>
+      </div>
+
+      <div class="body" id="body">
+        <div>
+          <div class="table">
+            <div class="thead"><span></span><span>会话</span><span>工作区</span><span>大小</span><span>上次活跃</span><span>状态</span><span style="text-align:right">操作</span></div>
+            <div id="rows"></div>
+          </div>
+          <div class="empty" id="empty" style="display:none">没有符合条件的会话</div>
+          <div class="meta" style="margin-top:8px">列表默认显示归档 + 冷存；搜索与「热会话」筛选会覆盖所有工作区。口径：已归档 + 上次活跃 &gt; 14 天 → 可迁移。</div>
+        </div>
+
+        <aside class="drawer" id="drawer" style="display:none">
+          <h3 id="dv-title">会话预览</h3>
+          <div class="meta" id="dv-meta"></div>
+          <div id="dv-msgs"></div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn pri" id="dv-restore">恢复到此目录</button>
+            <button class="btn" id="dv-open">打开会话</button>
+            <button class="btn" id="dv-close">关闭</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="pane-settings" style="display:none">
+      <div class="meta">保存即生效，不需要重启；冷目录变更只影响之后的迁移。</div>
+      <div class="form">
+        <div class="field" style="grid-column:1/-1"><label>冷存储根目录</label><p>必须在 <code>~/.dsh/sessions</code> 之外；建议同卷（rename 原子）。</p><input type="text" value="<DSH_HOME>\session-vault\cold" /></div>
+        <div class="field"><label>可迁移阈值</label><p>已归档 + <b>上次活跃</b>超过 N 天；0 = 关闭自动迁移。</p><input type="number" value="14" min="0" /></div>
+        <div class="field"><label>自动迁移</label><p>默认关（观察模式）；开启后按日预算逐批搬。</p><label class="switch"><input type="checkbox" id="auto-toggle" /> 开启自动迁移</label></div>
+        <div class="field"><label>清扫间隔</label><p>后台扫描归档案的频率。</p><select><option>15 分钟</option><option selected>30 分钟</option><option>60 分钟</option></select></div>
+        <div class="field"><label>每日预算</label><p>每天最多迁移多少个会话。</p><input type="number" value="20" min="1" max="100" /></div>
+        <div class="field"><label>允许跨卷迁移</label><p>跨盘 = 复制→校验→删除；开启需二次确认。</p><label class="switch"><input type="checkbox" /> 开启（不推荐）</label></div>
+        <div class="field"><label>取消归档时恢复</label><p>官方取消归档不查文件；开启后先搬回再放行，避免冷会话隐形。</p><label class="switch"><input type="checkbox" checked /> 透明水合</label></div>
+        <div class="note">索引：覆盖全部会话（热/归档/冷），按文件 size+mtime 增量更新；首次建索引会显示进度，可暂停。冷存搬家不影响热会话索引。</div>
+      </div>
+      <div style="margin-top:12px"><button class="btn pri" id="save">保存设置</button></div>
+    </section>
+  </main>
+</div>
+
+<button class="hdrchip" id="hdr-open" title="示意：任意会话头部也会有一个 🔍 按钮，呼出同一个搜索">🔍 会话头部入口 <small>示意</small></button>
+<div class="overlay" id="quick">
+  <div class="omodal">
+    <input id="oq" type="text" placeholder="搜索所有工作区会话（热 / 归档 / 冷）…" />
+    <div class="ohint"><span>所有工作区 · 归档 · 冷存｜↑↓ 选择，Enter 打开，Esc 关闭</span><span>Ctrl/Cmd+K</span></div>
+    <div class="ores" id="ores"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var root=document.getElementById('svx2');
+  var rows=[
+    {id:'h1',t:'DSH 会话保险库插件开发',ws:'dsh-desktop',size:'—',days:0,st:'live'},
+    {id:'h2',t:'lore 页面重写 · commercial-roadmap',ws:'workspace-intel',size:'3.4 MB',days:1,st:'hot'},
+    {id:'a',t:'GFW 自产采集器 v3 设计与实现',ws:'workspace-intel',size:'12.1 MB',days:30,st:'elig'},
+    {id:'b',t:'恶意样本批量分析流水线 · 第三轮迭代',ws:'workspace-scan',size:'34.5 MB',days:2,st:'hot'},
+    {id:'c',t:'bounded-agent 核心重构 · 收尾',ws:'workspace-agent',size:'6.5 MB',days:41,st:'elig'},
+    {id:'d',t:'威胁情报 IOC 抽取规则调优',ws:'workspace-intel',size:'8.2 MB',days:16,st:'elig'},
+    {id:'e',t:'PE 解析器崩溃排查',ws:'workspace-scan',size:'2.1 MB',days:16,st:'elig'},
+    {id:'f',t:'会话压缩策略评估',ws:'workspace-agent',size:'4.8 MB',days:9,st:'hot'},
+    {id:'g',t:'样本沙箱逃逸分析',ws:'workspace-scan',size:'21.3 MB',days:60,st:'cold'}
+  ];
+  var sel={},filter='all',q='',wq='all',drawer=null;
+  function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
+  function tag(r){
+    if(r.st==='live') return '<span class="tag hot">进行中</span>';
+    if(r.st==='cold') return '<span class="tag cold">冷存储</span>';
+    if(r.st==='elig') return '<span class="tag elig">可迁移</span>';
+    if(r.st==='mig') return '<span class="tag elig">迁移中…</span>';
+    if(r.st==='res') return '<span class="tag elig">恢复中…</span>';
+    if(r.st==='hot') return '<span class="tag hot">热会話</span>';
+    return '<span class="tag">—</span>';
+  }
+  function acts(r){
+    if(r.st==='cold') return '<button class="btn" data-act="preview" data-id="'+r.id+'">预览</button><button class="btn pri" data-act="restore" data-id="'+r.id+'">恢复</button>';
+    if(r.st==='elig') return '<button class="btn" data-act="preview" data-id="'+r.id+'">预览</button><button class="btn pri" data-act="migrate" data-id="'+r.id+'">迁移</button>';
+    if(r.st==='hot'||r.st==='live') return '<button class="btn" data-act="open" data-id="'+r.id+'">打开</button>';
+    return '<button class="btn" disabled>处理中…</button>';
+  }
+  function match(r){
+    if(filter==='elig'&&r.st!=='elig') return false;
+    if(filter==='cold'&&r.st!=='cold') return false;
+    if(filter==='hotall'&&!(r.st==='hot'||r.st==='live')) return false;
+    if(filter==='all'&&!(r.st==='elig'||r.st==='cold'||r.st==='hot'||r.st==='live')) return false;
+    if(wq!=='all'&&r.ws!==wq) return false;
+    if(q){var s=(r.t+r.ws).toLowerCase();if(s.indexOf(q.toLowerCase())<0)return false}
+    return true;
+  }
+  function render(){
+    var h='',n=0;
+    rows.forEach(function(r){
+      if(!match(r))return;n++;
+      h+='<div class="row'+(sel[r.id]?' sel':'')+'">'
+        +'<input type="checkbox" data-sel="'+r.id+'"'+(sel[r.id]?' checked':'')+' aria-label="选择" />'
+        +'<div><div class="title">'+r.t+'</div><div class="meta">'+(r.st==='cold'?'已冷存':(r.st==='elig'?'已归档 · 可迁移':(r.st==='live'?'当前会话':'热会话，未归档')))+'</div></div>'
+        +'<div class="meta">'+r.ws+'</div><div class="meta">'+r.size+'</div><div class="meta">'+(r.days===0?'刚刚':r.days+' 天前')+'</div>'
+        +'<div>'+tag(r)+'</div><div class="acts">'+acts(r)+'</div></div>';
+    });
+    document.getElementById('rows').innerHTML=h;
+    document.getElementById('empty').style.display=n?'none':'block';
+    var c=Object.keys(sel).filter(function(k){return sel[k]}).length;
+    document.getElementById('bulk').classList.toggle('show',c>0);
+    document.getElementById('bulk-n').textContent='已选 '+c+' 项';
+    if(drawer){var d=rows.filter(function(x){return x.id===drawer})[0];draw(d)}
+    document.getElementById('st-cold').textContent=rows.filter(function(r){return r.st==='cold'}).length;
+  }
+  function draw(r){
+    if(!r){document.getElementById('drawer').style.display='none';document.getElementById('body').classList.remove('with-drawer');return}
+    document.getElementById('drawer').style.display='block';
+    document.getElementById('body').classList.add('with-drawer');
+    document.getElementById('dv-title').textContent=r.t;
+    document.getElementById('dv-meta').textContent=r.ws+' · '+r.size+' · 上次活跃 '+(r.days===0?'刚刚':r.days+' 天前')+(r.st==='cold'?' · 已冷存':(r.st==='elig'?' · 可迁移':' · 热目录'));
+    var msgs=[['用户','这个会话归档了吗？还能找回来吗？'],['助手','已归档；上次活跃超过 14 天后会进可迁移列表，恢复时先搬回再取消归档。'],['用户','搜索能搜到所有工作区吗？'],['助手','能。索引覆盖所有会话（热/归档/冷），搜索框在面板顶部，Ctrl+K 全局可呼出。']];
+    document.getElementById('dv-msgs').innerHTML=msgs.map(function(m){return '<div class="msg"><b>'+m[0]+'</b>'+m[1]+'</div>'}).join('');
+    document.getElementById('dv-restore').style.display=r.st==='cold'?'inline-block':'none';
+    document.getElementById('dv-open').style.display=(r.st==='hot'||r.st==='live')?'inline-block':'none';
+    document.getElementById('dv-restore').setAttribute('data-id',r.id);
+    document.getElementById('dv-open').setAttribute('data-id',r.id);
+  }
+  function act(id,k){
+    var r=rows.filter(function(x){return x.id===id})[0];if(!r)return;
+    if(k==='preview'){drawer=id;render();return}
+    if(k==='open'){document.getElementById('quick').classList.remove('show');toast('将打开会话（示例）：'+r.t.slice(0,18)+'…');return}
+    if(k==='migrate'){
+      if(r.st!=='elig')return;r.st='mig';render();
+      setTimeout(function(){r.st='cold';render();toast('已迁移 1 个会话（示例）')},1100);return;
+    }
+    if(k==='restore'){
+      if(r.st!=='cold')return;r.st='res';render();
+      setTimeout(function(){r.st='hot';r.days=0;render();toast('已恢复：搬回热目录 + 取消归档（示例）')},1100);return;
+    }
+  }
+  function quickRender(){
+    var v=document.getElementById('oq').value.toLowerCase();
+    var list=rows.filter(function(r){var s=(r.t+r.ws).toLowerCase();return !v||s.indexOf(v)>=0});
+    document.getElementById('ores').innerHTML=list.map(function(r){
+      var st=(r.st==='cold'?'冷存储':(r.st==='elig'?'可迁移':(r.st==='live'?'进行中':'热会话')));
+      return '<div class="oitem" data-open="'+r.id+'"><div>'+r.t+'<div class="meta">'+r.ws+'</div></div><div class="meta">'+st+'</div><div class="meta">'+r.size+'</div><div class="meta">'+(r.days===0?'刚刚':r.days+' 天前')+'</div></div>';
+    }).join('')||'<div class="empty">没有命中</div>';
+  }
+  root.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.dataset&&t.dataset.act){act(t.dataset.id,t.dataset.act);return}
+    if(t.dataset&&t.dataset.f!==undefined){filter=t.dataset.f;root.querySelectorAll('.chip').forEach(function(c){c.classList.toggle('on',c===t)});render();return}
+    if(t.dataset&&t.dataset.tab){['list','settings'].forEach(function(k){document.getElementById('pane-'+k).style.display=(k===t.dataset.tab)?'block':'none';root.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b===t)})});return}
+    if(t.dataset&&t.dataset.bulk){var ids=Object.keys(sel).filter(function(k){return sel[k]});
+      if(t.dataset.bulk==='clear'){sel={};render();return}
+      ids.forEach(function(id){var r=rows.filter(function(x){return x.id===id})[0];
+        if(t.dataset.bulk==='migrate'&&r.st==='elig'){r.st='mig';setTimeout(function(){r.st='cold';render()},800)}
+        if(t.dataset.bulk==='restore'&&r.st==='cold'){r.st='res';setTimeout(function(){r.st='hot';render()},800)}
+      });sel={};render();toast('已处理 '+ids.length+' 个会话（示例）');return}
+    if(t.id==='dv-close'){drawer=null;render();return}
+    if(t.id==='dv-restore'){act(t.getAttribute('data-id'),'restore');return}
+    if(t.id==='dv-open'){act(t.getAttribute('data-id'),'open');return}
+    if(t.id==='quick-open'){document.getElementById('quick').classList.add('show');document.getElementById('oq').focus();quickRender();return}
+    if(t.id==='quick'){document.getElementById('quick').classList.remove('show');return}
+    if(t.dataset&&t.dataset.open){var r=rows.filter(function(x){return x.id===t.dataset.open})[0];document.getElementById('quick').classList.remove('show');if(r){if(r.st==='cold'){drawer=r.id;document.querySelector('.tab[data-tab=list]').click();render()}else{act(r.id,'open')}}return}
+    if(t.id==='save'){toast('设置已保存（示例）；下一次清扫按新阈值执行');return}
+    if(t.id==='side-vault'){document.querySelector('.tab[data-tab=list]').click();return}
+  });
+  root.addEventListener('change',function(e){
+    var t=e.target;
+    if(t.dataset&&t.dataset.sel){sel[t.dataset.sel]=t.checked;render()}
+    if(t.id==='auto-toggle'){document.getElementById('st-auto').textContent=t.checked?'开':'关';toast(t.checked?'自动迁移已开启（示例）':'自动迁移已关闭')}
+    if(t.id==='wsel'){wq=t.value;render()}
+  });
+  root.addEventListener('input',function(e){
+    if(e.target.id==='q'){q=e.target.value;render()}
+    if(e.target.id==='oq'){quickRender()}
+  });
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.getElementById('quick').classList.add('show');document.getElementById('oq').focus();quickRender()}
+    if(e.key==='Escape'){document.getElementById('quick').classList.remove('show')}
+  });
+  render();quickRender();
+})();
+</script>
+<script>(function(){var b=document.getElementById('hdr-open');if(!b)return;b.addEventListener('click',function(){document.getElementById('quick').classList.add('show');var q=document.getElementById('oq');if(q)q.focus()});})();</script>
+</div>
+</body></html>

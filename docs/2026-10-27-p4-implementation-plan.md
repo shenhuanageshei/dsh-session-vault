@@ -148,3 +148,19 @@ npm run build && node --test tests/ui-contract.test.mjs   # 构建产物一致�
 | 7 | B1 备案：「立即扫描」不补假进度、设置页也显示文案红线、恢复后的 class S 会话两段都不可见、黄条触发条件 | **接受**：同步路由没有进度事件，如实呈现比假进度好；其余与 UI 档一致 |
 
 **未执行的事**：**没有在实机上搬过任何一个会话**。P4 的候选（≥14 天 1271 个 / 555 MB）仍原样在热目录；是否迁移、迁移多少，由用户在交付后决定。
+
+## 12. 代码评审结论与后续待办（2026-10-27）
+
+**结论：`VERDICT: PASS`**（无 🔴、无 must-fix）。评审逐条核对了七条资格、迁移/恢复 class 分支、对账分域、marker/manifest `class`、`archivedSessionIds` 零改动、count 口径、ENOENT 判别器、扫描解耦、HTTP `confirm` 门、UI 契约与 `vault-restore.mjs` 的 class S 跳过，并与 §19 / FR-P4 / I-15..I-18 / UI 档 §7 / 本计划 §10-11 的裁决对齐。
+
+**4 条 🔵（非阻塞，本批不修，登记为后续待办）**：
+
+| # | 位置 | 发现 | 处置 |
+| --- | --- | --- | --- |
+| 1 | `lib/sweeper.js:487` | `subagentSnapshot()` 读 `_lastConfig`，首拍（启动 60s 内）的 `/status.subagent.migrate`、`budget.limit` 可能读成 false/0 | **延后**：首拍后自愈，仅读数短暂失真；修法是 `start()` 预热一次 `config()`——留给下一轮抛光（会动 sweeper 启动路径，需回归 sweep 全量） |
+| 2 | `lib/engine.js:194` | `HEADER_NON_REF_KEYS` 显式排除 `parentSessionId`，与「新 id 型字段自动进 orphanEdges」的注释相悖 | **延后**：当前 header 无该字段（120 抽样），属前瞻口径；修法是移出排除清单或写明依据 |
+| 3 | `lib/engine.js:6377-6381` | `reconcileRegistry` 缺第三桶：`cold ∧ ¬archived ∧ 非子代理` 且 facts 丢失时会误标 `external-unarchived` | **延后**：当前生产路径不可达（迁移与冷导入都随行落三列）；改成 `needs-review` 属于动 class A 对账语义，须单独设计 + 锚点 |
+| 4 | `lib/engine.js:1413-1415` | `registeredIdSet` 依赖 `header_cwd` 解析工作区，解析失败的行不受登记保护且无读数 | **延后**：由 archived/年龄/活跃三门兜底；可观测性问题留待 `/diagnose` 增强 |
+
+**交付状态**：代码已实施、全量 274 项全绿、构建逐字节一致、评审 PASS；**实机迁移未执行**。要让它生效需要**重启 DSH**（宿主插件默认不热重载，重启时机由用户决定）。
+

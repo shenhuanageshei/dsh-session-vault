@@ -524,12 +524,10 @@ function VaultScopeProgress(props) {
 
 /**
  * 文案红线（UI 档 §7，用户实测反馈）：搬走之后宿主的可见性会变 —— 必须写清楚，
- * 否则用户会以为「会话丢了」。
+ * 否则用户会以为「会话丢了」。字面量定义在 src/ui/settings.tsx 的 SUBAGENT_RED_LINE
+ * （单模块作用域 ⇒ 本页直接引用同一份，设置卡与子代理页只此一句）。
  */
-var SUBAGENT_RED_LINE = '搬到冷存后，宿主的会话列表与父会话的子代理缩进行不再显示它们；可在本页或全局搜索找回';
-/** 设置页 → 主面板的恢复入口指路（2026-10-27 用户实测：在设置页找不到恢复入口）。 */
-var SUBAGENT_MAIN_PANEL_HINT = '列表 / 预览 / 恢复入口在主面板（侧栏「会话保险库」），本页只放配置';
-/** class S 的暂停四原因（顺序即黄条展示顺序；与 sweeper 的 SUBAGENT_PAUSE_CODES 同序同码）。 */
+/* class S 的暂停四原因（顺序即黄条展示顺序；与 sweeper 的 SUBAGENT_PAUSE_CODES 同序同码）。 */
 var SUBAGENT_PAUSE_REASON_ORDER = ['subagent-refs-incomplete', 'cold-unavailable', 'cross-volume-disabled', 'restoring-unsettled'];
 var SUBAGENT_PAUSE_REASON_TEXT = {
   'subagent-refs-incomplete': '引用快照不可信（缺失 / 超过 24h / gaps 非空）⇒ 一个都不搬（I-18）',
@@ -545,12 +543,19 @@ function vaultSubagentStatusLabel(item) {
   return SUBAGENT_STATUS_LABELS[item.status] || item.status || '—';
 }
 
-/** 子代理行按 class 分域（data.items 里 status 已经由引擎标好，这里只分组）。 */
+/**
+ * 子代理行按 class 分域（data.items 里 status 已经由引擎标好，这里只分组）。
+ *
+ * 额外再过一遍 class === 'subagent'：切视图的一瞬间 `items` 还可能是**上一视图**的数据
+ * （useVaultList 保留旧 data 直到新请求返回），没有这道闸，class A 的冷行会被当成
+ * 「已冷存」显示在子代理页里（行操作还会给「恢复」，指向错的对象）。
+ */
 function vaultSubagentSections(items) {
   var list = Array.isArray(items) ? items : [];
+  var scoped = list.filter(function (item) { return Boolean(item) && item.class === 'subagent'; });
   return {
-    candidates: list.filter(function (item) { return item.status === 'hot-subagent'; }),
-    cold: list.filter(function (item) { return item.status === 'cold'; })
+    candidates: scoped.filter(function (item) { return item.status === 'hot-subagent'; }),
+    cold: scoped.filter(function (item) { return item.status === 'cold'; })
   };
 }
 
@@ -645,26 +650,33 @@ function VaultSubagentPage(props) {
     h('div', { style: { padding: '8px 16px', fontSize: 12, lineHeight: 1.7, color: VAULT_MUTED, borderBottom: '1px solid ' + VAULT_BORDER } },
       SUBAGENT_RED_LINE),
     h(VaultSubagentPauseBanner, { subagent: sub, busy: props.busy, onRescan: props.onRescan }),
-    h(VaultSubagentSection, {
-      title: '候选（热）',
-      hint: '行操作 = 迁移（二次确认在本页顶部）',
-      items: sections.candidates,
-      emptyText: emptyCandidateText,
-      busy: props.busy,
-      onMigrate: props.onMigrate,
-      onRestore: props.onRestore,
-      onPreview: props.onPreview
-    }),
-    h(VaultSubagentSection, {
-      title: '已冷存',
-      hint: '行操作 = 恢复 / 预览（不打开会话）',
-      items: sections.cold,
-      emptyText: '还没有已冷存的子代理会话',
-      busy: props.busy,
-      onMigrate: props.onMigrate,
-      onRestore: props.onRestore,
-      onPreview: props.onPreview
-    })
+    // 子代理列表还没到手时给「加载中…」，绝不把上一视图的数据（或空态）当成结论。
+    props.loading
+      ? h('div', { style: { padding: 24, fontSize: 13, color: VAULT_MUTED } }, '加载中…')
+      : props.error
+        ? h('div', { style: { padding: 24, fontSize: 13, color: 'var(--dsh-danger, #B91C1C)' } },
+            '子代理列表加载失败：' + (props.error.message || '未知原因'))
+        : h('div', { style: { display: 'flex', flexDirection: 'column' } },
+            h(VaultSubagentSection, {
+              title: '候选（热）',
+              hint: '行操作 = 迁移（二次确认在本页顶部）',
+              items: sections.candidates,
+              emptyText: emptyCandidateText,
+              busy: props.busy,
+              onMigrate: props.onMigrate,
+              onRestore: props.onRestore,
+              onPreview: props.onPreview
+            }),
+            h(VaultSubagentSection, {
+              title: '已冷存',
+              hint: '行操作 = 恢复 / 预览（不打开会话）',
+              items: sections.cold,
+              emptyText: '还没有已冷存的子代理会话',
+              busy: props.busy,
+              onMigrate: props.onMigrate,
+              onRestore: props.onRestore,
+              onPreview: props.onPreview
+            }))
   );
 }
 
@@ -1311,6 +1323,9 @@ function VaultPanel() {
             items: items,
             subagent: subagentSummary,
             busy: busy[0],
+            // `data.class` 是 /list 的视图标记：旧视图的数据还没被替换时不许当成子代理列表。
+            loading: Boolean(vaultList.state.loading) && !(data && data.class === 'subagent'),
+            error: vaultList.state.error,
             onRescan: runSubagentScan,
             onMigrate: function (item) { migrateSubagentRows([item]); },
             onRestore: function (item) { runAction('restore', [item.id], '恢复'); },

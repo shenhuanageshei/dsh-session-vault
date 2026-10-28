@@ -1,6 +1,6 @@
 # dsh-session-vault UI 设计（设置页与搜索交互）
 
-- 版本：**v0.4.1**（2026-10-27：§7 补「gaps 解除路径」与「设置页 → 主面板」恢复入口指路；v0.4 = 新增 §7 P4 子代理会话冷存视图（设置页卡 + 面板双 chip）；v0.3 = 2026-10-22 21:40：主入口改为侧栏 `sidebar.panellist` + `sidebar.footer.action` 快速搜索；设置页降为配置与兜底；D-16′ 透明水合与跨卷二次确认已采纳）
+- 版本：**v0.4.2**（2026-10-28：§7.1 列表排序切换（按工作区 / 按时间）；v0.4.1 = 2026-10-27：§7 补「gaps 解除路径」与「设置页 → 主面板」恢复入口指路；v0.4 = 新增 §7 P4 子代理会话冷存视图（设置页卡 + 面板双 chip）；v0.3 = 2026-10-22 21:40：主入口改为侧栏 `sidebar.panellist` + `sidebar.footer.action` 快速搜索；设置页降为配置与兜底；D-16′ 透明水合与跨卷二次确认已采纳）
 - 日期：2026-10-22
 - 关联：[设计档 v0.4.2](2026-10-22-session-vault-design.md) · [需求档 v0.4.1](2026-10-22-session-vault-requirements.md)
 - 交互预览（当前）：[sidebar-vault-preview.html](preview/2026-10-22-sidebar-vault-preview.html)（自包含 HTML，浏览器直接打开；侧栏入口 + 主列面板 + Ctrl/Cmd+Shift+K 快速搜索（P3 起），可点 迁移 / 恢复 / 预览 / 设置）

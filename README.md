@@ -6,6 +6,7 @@
 
 - 目标宿主：**DSH 0.2.1-rc.2** 桌面版（Node 24，ESM，内置 `node:sqlite` / `node:zlib` zstd）。版本门写在
   `package.json` 的 `engines.dsh = ">=0.2.1-rc.2 <0.3.0"`。
+- 当前版本：**0.4.0**（2026-10-28）——变更见 [CHANGELOG.md](CHANGELOG.md)。
 - 当前范围：**P0 + P1 + P2 + P3a + P3b + P4**（P4 = 子代理会话冷存：已实机迁移 class S **1156 个 / 约 509 MiB**，0 失败）（… / 自动清扫 / 全量索引 / 全文搜索 / 只读预览；P3a = **Ctrl/Cmd+Shift+K** 全局搜索（普通 Ctrl+K 归宿主）+ **检索范围** `searchScope`：默认正文，可选收录工具结果（只收结果、单条 8KB、不含参数）；P3b = 收藏 / 回收站 / 诊断修复 / 列表窗口化）。
 - **P4（子代理会话冷存 / class S）已实施并于 2026-10-28 实机迁移**：批次 A/B1/B2/B3/B4/B5 交付，全量 **276 项全绿**；两批迁移共 1157 次（273 + 884），class S 冷存 **1156 个 / 533,401,237 字节**，0 失败，恢复实测通过；见[设计档](docs/2026-10-22-session-vault-design.md) §19 与下方「P4 子代理会话冷存（已实施）」。
 
@@ -16,7 +17,8 @@
 | [设计档 v0.4.2](docs/2026-10-22-session-vault-design.md) | 架构 / schema / 状态机 / 崩溃矩阵 / 验收锚 / §18 P3 设计 / §19 P4 设计 |
 | [需求档 v0.4.1](docs/2026-10-22-session-vault-requirements.md) | FR-x / 用户故事 / AC（含 P4） |
 | [安全边界档 v0.4.2](docs/2026-10-22-session-vault-safety.md) | 数据不变量 I-1..I-18 |
-| [UI 设计档 v0.4.1](docs/2026-10-22-session-vault-ui-design.md) | 入口 / 线框 / 交互矩阵 / §7 P4 子代理视图 |
+| [UI 设计档 v0.4.2](docs/2026-10-22-session-vault-ui-design.md) | 入口 / 线框 / 交互矩阵 / §7 P4 子代理视图 / §7.1 列表排序 |
+| [变更记录 v0.4.0](CHANGELOG.md) | 版本历史与每次交付的内容 |
 
 ## P2 能力与限制（2026-10-23）
 

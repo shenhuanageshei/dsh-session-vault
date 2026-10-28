@@ -104,7 +104,7 @@ DSH 的「归档会话」是**纯标记**：往 `workspace.json` 的 `global.arc
 
 ### P3
 
-- **FR-11 收藏**：本地收藏集合，列表置顶。
+- **FR-11 收藏**：本地收藏集合；「按时间」排序时列表置顶，「按工作区」排序（2026-10-28 B4 起的默认）时以收藏 chip 筛选。
 - **FR-12 永久删除 + 回收站**：冷会话移入 **`<vaultRoot>/trash/<id>/<ts>/`**（同卷 rename、跨卷 copy+基线校验，失败不删源），可恢复；热会话只 `hidden=1`（文件不动）；显式「彻底删除」才 unlink（仅限 trash 根内，二次确认），30 天到期只提示不自动删。
 - **FR-13 诊断与修复**：检测可读性问题（frame-corrupt / extract-empty / index-failed / seq-gap）与 DB/manifest/冷目录对账差异，只读列出；安全修复 = 重新索引 / 标 needs-review / 补删 manifest 行 / 清孤立 marker / 导入冷目录（dry-run 预览 + 逐项确认）；**不做 v0→v4 重编码**（P3-D8 弃做裁定：改会话格式风险高、非插件职责），失败 fail-closed。
 

@@ -2,6 +2,12 @@
 
 本项目的版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)；日期为本地交付日。
 
+## [0.4.1] — 2026-10-28
+
+### 修复
+
+- **class A 恢复失败（真机缺陷）**：`originalOf()` 从 `registry[VAULT_ORIGINAL]` 取到的是**未绑定**引用，而宿主的 `archiveSession` / `unarchiveSession` 是依赖 `this` 的原型方法 ⇒ 恢复最后一步抛 `Cannot read properties of undefined (reading 'enqueueOperation')`。两条分支统一 `fn.bind(registry)`，并补「原型方法 `this`」回归测试（276 → **277 项**）。**需重启 DSH 生效**。
+
 ## [0.4.0] — 2026-10-28
 
 ### 新增：P4 子代理会话冷存（class S）
@@ -16,14 +22,13 @@
 
 ### 修复
 
-- **class A 恢复失败（真机缺陷）**：`originalOf()` 从 `registry[VAULT_ORIGINAL]` 取到的是**未绑定**引用，而宿主的 `archiveSession` / `unarchiveSession` 是依赖 `this` 的原型方法 ⇒ 恢复最后一步抛 `Cannot read properties of undefined (reading 'enqueueOperation')`。两条分支统一 `fn.bind(registry)`，并补「原型方法 this」回归测试（276 → 277 项）。**需重启 DSH 生效**。
 - **侧栏入口**：点「会话保险库」只弹搜索 —— 根因（插件行自渲染文字与按钮 / `main` 用 `id` 而非 `key` 注册 / 未注入 `layout` / 失败回退打开搜索）全部修复；`ui-contract` 增三条防回归断言。
 - 设置页「收藏置顶」文案随排序模式修正（仅「按时间」模式置顶）。
 
 ### 改进
 
 - 归档列表默认**按工作区排序**（工具条可切回「按时间」）；窗口化与固定行高不变。
-- 测试规模收敛到 **277 项**，`node --test` 全绿；`lib/client.js` 与源码渲染逐字节一致。
+- 测试规模收敛到 **276 项**，`node --test` 全绿；`lib/client.js` 与源码渲染逐字节一致（0.4.1 追加 1 条回归测试后为 277）。
 
 ## [0.3.0] — 2026-10-26（历史汇总，未单独打 tag）
 

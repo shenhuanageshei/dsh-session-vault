@@ -33,14 +33,15 @@ function hostProjectKey(cwd) {
   return '--' + (readable.replace(/^-+/, '') || 'root').slice(0, 251) + '--';
 }
 
-test('C-11/A-10（阻断 1）：projectKey 用真实目录名硬编码断言（宿主逐字一致）', () => {
-  // 这三个是磁盘上真实存在的 projectKey 目录名（as-of 2026-10-23）。
-  // 旧实现逐字符替换 + 不折叠分隔符连续段 ⇒ 产出 --D--dsh-desktop--（真实数据 100% 被 A-10 门拒）。
-  assert.equal(projectKey('<DSH_INSTALL>'), '--D-dsh-desktop--');
-  assert.equal(projectKey('<workspace-root>\\workspace-intel'), '--workspace-intel--');
-  assert.equal(projectKey('<code-root>\\workspace-dns'), '--workspace-dns--');
+test('C-11/A-10（阻断 1）：projectKey 对宿主形态路径的逐字断言（公开仓库用中性样本）', () => {
+  // 公开仓库不携带真实目录名：用与宿主同形态（盘符 + 反斜杠 + 大小写下划线）的中性路径做逐字断言，
+  // 算法与 C-11 口径不变（真实数据的只读回归见下方「真数据只读回归」用例，缺样本自动 skip）。
+  // 旧实现逐字符替换 + 不折叠分隔符连续段 ⇒ 会产出双横线指纹。
+  assert.equal(projectKey('E:\\apps\\demo-app'), '--E-apps-demo-app--');
+  assert.equal(projectKey('E:\\workspace\\sample-ws'), '--E-workspace-sample-ws--');
+  assert.equal(projectKey('E:\\Code\\sample_tool'), '--E-Code-sample_tool--');
   // 反例守卫：绝不能出现「双横线」（旧 bug 的指纹）
-  assert.equal(projectKey('<DSH_INSTALL>').includes('--D--'), false);
+  assert.equal(projectKey('E:\\apps\\demo-app').includes('--E--'), false);
 });
 
 test('C-11：分隔符连续段折叠 / ~ 转义 / 不安全字符 / 去前导 - / root / 截断 251', () => {

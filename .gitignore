@@ -6,6 +6,9 @@ node_modules/
 *.part
 *.log
 
+# 会话产物 / 调试截图（core-artifact 约定目录，不入库）
+.artifacts/
+
 # 系统文件
 .DS_Store
 Thumbs.db

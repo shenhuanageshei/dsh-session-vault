@@ -20,7 +20,7 @@
 | [需求档 v0.4.1](docs/2026-10-22-session-vault-requirements.md) | FR-x / 用户故事 / AC（含 P4） |
 | [安全边界档 v0.4.2](docs/2026-10-22-session-vault-safety.md) | 数据不变量 I-1..I-18 |
 | [UI 设计档 v0.4.2](docs/2026-10-22-session-vault-ui-design.md) | 入口 / 线框 / 交互矩阵 / §7 P4 子代理视图 / §7.1 列表排序 |
-| [变更记录 v0.4.0](CHANGELOG.md) | 版本历史与每次交付的内容 |
+| [变更记录 v0.4.1](CHANGELOG.md) | 版本历史与每次交付的内容 |
 
 ## P2 能力与限制（2026-10-23）
 

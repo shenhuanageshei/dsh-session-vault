@@ -4,6 +4,8 @@
 `<DSH_HOME>/session-vault/cold`，热目录只留冷索引（元数据 + 全文 + 审计）；需要时按落库事实一键搬回原 `projectKey`
 并调官方 `unarchiveSession` 解除归档。支持所有工作区（热）/ 归档 / 冷存的统一列表与本地全文索引。
 
+> **脱敏说明**：本仓库为公开准备做过脱敏——文档中的 `<DSH_HOME>`、`<USER_HOME>`、`<workspace-root>`、`<cold-root>`、`<DSH_INSTALL>` 是路径占位符；工作区/项目名已替换为中性名（`workspace-*` 等）；提交作者统一为 `dsh-session-vault <shenhuanageshei@users.noreply.github.com>`。代码逻辑与测试断言不受影响（276 项全绿）。
+
 - 目标宿主：**DSH 0.2.1-rc.2** 桌面版（Node 24，ESM，内置 `node:sqlite` / `node:zlib` zstd）。版本门写在
   `package.json` 的 `engines.dsh = ">=0.2.1-rc.2 <0.3.0"`。
 - 当前版本：**0.4.0**（2026-10-28）——变更见 [CHANGELOG.md](CHANGELOG.md)。

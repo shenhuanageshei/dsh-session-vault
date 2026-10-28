@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { resolveVaultPaths, createConfigStore } from '../lib/config.js';
 import { VaultStore } from '../lib/store.js';
-import { VaultEngine, installArchiveTracker, projectKey, FORMAT_WHITELIST } from '../lib/engine.js';
+import { VaultEngine, installArchiveTracker, projectKey, FORMAT_WHITELIST, VAULT_ORIGINAL } from '../lib/engine.js';
 import { hashTree, statTree, isGenerationName } from '../lib/marker.js';
 import { Manifest, dedupKey } from '../lib/manifest.js';
 import { forEachJsonLine } from '../lib/zstd-frames.js';
@@ -1396,6 +1396,64 @@ test('P2-0 B：backfillArchivedAt 把 118 个归档 id 入库（字段齐全）�
     assert.equal(list2, list1, 'TTL 内必须命中同一份缓存（不重新扫描、不重算）');
     assert.ok(hotElapsed < 500, '命中缓存必须 <500ms，实测 ' + hotElapsed + 'ms');
     assert.ok(h.engine.perfStats().listHits >= 1);
+  } finally {
+    await h.dispose();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// B6（真机缺陷，2026-10-28）：class A 恢复在真机 unarchive-failed
+//   "Cannot read properties of undefined (reading 'enqueueOperation')"
+//
+// 根因：宿主 archiveSession / unarchiveSession 是**原型方法**且内部依赖 this
+// （dsh-workspace/lib/index.js:549），而安装路径把从 registry 取到的**未绑定引用**
+// 存进 registry[VAULT_ORIGINAL]；旧 originalOf 在该分支直接返回它 ⇒ this 丢失。
+// 铁律：两条分支同一绑定口径。
+// ---------------------------------------------------------------------------
+test('B6：originalOf 对 VAULT_ORIGINAL 里的原型方法保留 this（unarchiveSession / archiveSession 同口径）', async () => {
+  const h = await createHarness();
+  try {
+    // 宿主形状：两个归档方法都定义在原型上，内部经 this 转给 enqueueOperation。
+    class HostRegistry {
+      constructor() {
+        this.archivedSessionIds = new Set();
+      }
+
+      enqueueOperation(id) {
+        return 'ok:' + id;
+      }
+
+      archiveSession(id) {
+        return this.enqueueOperation(id);
+      }
+
+      unarchiveSession(id) {
+        return this.enqueueOperation(id);
+      }
+    }
+
+    const registry = new HostRegistry();
+    // 前提取证：从实例上取到的原型方法是未绑定引用，单独调用确实丢 this（真机报错原文）。
+    const unbound = registry.unarchiveSession;
+    assert.throws(() => unbound('s1'), /enqueueOperation/, '前提：原型方法脱离实例调用必须丢 this');
+    assert.equal(registry.unarchiveSession('s1'), 'ok:s1', '前提：绑在实例上调用正常');
+
+    // 模拟安装路径（lib/engine.js:6982-6983 → 7051）：抓到的原始引用原样存进 VAULT_ORIGINAL。
+    registry[VAULT_ORIGINAL] = {
+      archiveSession: registry.archiveSession,
+      unarchiveSession: registry.unarchiveSession,
+    };
+    h.engine.registry = registry;
+
+    // 旧实现直接返回 originals[name] ⇒ 抛 undefined reading 'enqueueOperation'。
+    assert.equal(h.engine.originalOf('unarchiveSession')('s1'), 'ok:s1', 'VAULT_ORIGINAL 分支必须绑定到 registry');
+    assert.equal(h.engine.originalOf('archiveSession')('s2'), 'ok:s2', 'archiveSession 必须同口径（不再一函数两种绑定语义）');
+
+    // 回退分支（未登记 VAULT_ORIGINAL）本来就是绑定语义：修复后两条分支必须一致。
+    delete registry[VAULT_ORIGINAL];
+    assert.equal(h.engine.originalOf('unarchiveSession')('s3'), 'ok:s3', '回退分支必须绑定到 registry');
+    assert.equal(h.engine.originalOf('archiveSession')('s4'), 'ok:s4');
+    assert.equal(h.engine.originalOf('noSuchMethod'), null, '不存在的方法仍然返回 null（不改既有语义）');
   } finally {
     await h.dispose();
   }

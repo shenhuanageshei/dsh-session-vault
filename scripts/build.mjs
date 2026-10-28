@@ -142,16 +142,41 @@ export const SHELL_HEAD = String.raw`window.__ModuleLoader__.load({
       try { window.dispatchEvent(new CustomEvent(OPEN_SEARCH_EVENT)); } catch (e) { warn('open search: ' + e.message); }
     }
 
+    /**
+     * 切到保险库主面板（设计档 §10 深链 / UI 档 §1：ctx.layout.selectPanel('session-vault')）。
+     *
+     * P4b3：三个前提缺一即打不开主面板（旧实现后两条都踩了）——
+     *   ① exports.inject 必须含 'layout'，否则 cordis 代理访问 ctx.layout 直接抛错；
+     *   ② main 席位必须用 key: PANEL_ID 注册：宿主 ui-layout 的 LayoutController 按
+     *      **key** 解析（dsh-client-ui-layout/lib/client.js:603
+     *      entry.options.key === id），不匹配就抛
+     *      'main panel "session-vault" is not registered'；
+     *   ③ 失败**只 warn**，绝不回退到打开搜索：旧实现在这里 dispatchOpenSearch()，
+     *      用户点侧栏行只会弹出搜索浮层，于是看起来「主面板打不开」。
+     * 设置页卡里的「打开主面板」按钮复用本函数（同一个出口、同一条失败语义）。
+     *
+     * @returns {boolean} true = 已切到主面板；false = 没切成（调用方自行提示，不换动作）
+     */
     function selectVaultPanel(ctx) {
       var target = ctx || ctxRef;
+      var layout = null;
       try {
-        if (target && target.layout && typeof target.layout.selectPanel === 'function') {
-          target.layout.selectPanel(PANEL_ID);
-          return true;
-        }
-      } catch (e) { warn('selectPanel: ' + e.message); }
-      dispatchOpenSearch();
-      return false;
+        layout = target ? target.layout : null;
+      } catch (e) {
+        warn('selectPanel 不可用（layout 服务未注入，见 exports.inject）：' + (e && e.message));
+        return false;
+      }
+      if (!layout || typeof layout.selectPanel !== 'function') {
+        warn('selectPanel 不可用（layout 服务未注入，见 exports.inject）：主面板未切换（绝不回退打开搜索）');
+        return false;
+      }
+      try {
+        layout.selectPanel(PANEL_ID);
+        return true;
+      } catch (e) {
+        warn('selectPanel 失败（main panel 是否以 key 注册？）：' + (e && e.message));
+        return false;
+      }
     }
 
     function openHotSession(id) {
@@ -229,10 +254,15 @@ export const SHELL_TAIL = String.raw`
         }, UI.PanelRow);
       }));
 
-      // 主列面板：与 panellist 行同 key，行点击由 sidebar shell 调 layout.selectPanel(id)
+      // 主列面板：与 panellist 行同标识，行点击由 sidebar shell 调 layout.selectPanel(id)。
+      // ⚠ 宿主按 **key** 解析 main 席位（dsh-client-ui-layout/lib/client.js:603：
+      //   ctx.slots.entries("main").some((entry) => entry.options.key === id)），
+      // 用 id 注册会让 ctx.layout.selectPanel('session-vault') 抛
+      //   'main panel "session-vault" is not registered'
+      // —— 对照 dsh-client-ui-plugin-manager/lib/client.js:3346 的 key: PANEL_ID。
       add(registerSlot(ctx, 'main', function (c) {
         return c.slots.register({
-          name: 'main', id: PANEL_ID, order: 210,
+          name: 'main', key: PANEL_ID, order: 210,
           label: function () { return '会话保险库'; }
         }, UI.Panel);
       }));
@@ -321,7 +351,9 @@ export const SHELL_TAIL = String.raw`
     }
 
     exports.name = 'dsh-session-vault';
-    exports.inject = ['slots'];
+    // 'layout' 不可省：ctx.layout（ui-layout 的 LayoutController）是切主面板的唯一入口；
+    // 不声明 inject 时 cordis 代理访问 ctx.layout 直接抛错 ⇒ selectVaultPanel 永远失败。
+    exports.inject = ['slots', 'layout'];
     exports.apply = apply;
     return module.exports;
   }

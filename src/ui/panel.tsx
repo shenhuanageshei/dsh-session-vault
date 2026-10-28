@@ -133,6 +133,25 @@ function vaultIconSearch(size, color) {
   );
 }
 
+/**
+ * P4b3：侧栏面板行图标（保险柜箱体 + 表盘 + 底座）。
+ *
+ * 侧栏那一行是**面板**入口，不是搜索入口 —— 用放大镜会让人以为点开的是搜索
+ * （正是本次要修的误读）。尺寸由宿主传入（宽侧栏 16 / 收起 18），线条只走 stroke。
+ */
+function vaultIconVault(size, color) {
+  var s = size || 18;
+  var stroke = color || 'currentColor';
+  return h(
+    'svg',
+    { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': 'true', focusable: 'false' },
+    h('rect', { x: '3', y: '4.5', width: '18', height: '15', rx: '3', stroke: stroke, strokeWidth: '1.8' }),
+    h('circle', { cx: '12', cy: '12', r: '3.4', stroke: stroke, strokeWidth: '1.8' }),
+    h('path', { d: 'M12 8.6V12', stroke: stroke, strokeWidth: '1.8', strokeLinecap: 'round' }),
+    h('path', { d: 'M6.6 19.5v1.4M17.4 19.5v1.4', stroke: stroke, strokeWidth: '1.8', strokeLinecap: 'round' })
+  );
+}
+
 function formatBytes(bytes) {
   var n = Number(bytes) || 0;
   if (n < 1024) return n + ' B';
@@ -1501,20 +1520,25 @@ function VaultPanel() {
   );
 }
 
-function VaultPanelRow() {
+/**
+ * 侧栏面板行（sidebar.panellist）—— **只渲染一个图标**，别的一律交给宿主。
+ *
+ * 宿主的 PanelRow（dsh-client-ui-sidebar/lib/client.js:164-191）自己就是那个按钮：
+ *   - 可访问名与 tooltip 取自我们注册项的 label()；
+ *   - onClick = selectPanel(id)（sidebar 把它接到 ctx.layout.selectPanel，:448-449）；
+ *   - 它把 renderSlot('sidebar.panellist', { size, active }, { only: id }) 渲染在**图标槽**
+ *     （panelGlyph span，:178-184）里，宽侧栏传 size=16、收起传 18。
+ * 所以本组件多画 button / 文字 / onClick / title 会同时造成：
+ *   ① 侧栏出现两遍「会话保险库」（宿主的面板标题 + 我们自己的文字）；
+ *   ② 点内层按钮走我们自己的点击路径（旧实现还在 selectPanel 失败时回退成打开搜索）。
+ * 行点击与标签由宿主负责；这里只把 size 画成图标。
+ */
+function VaultPanelRow(props) {
+  var size = props && props.size ? props.size : 18;
   return h(
-    'button',
-    {
-      type: 'button',
-      onClick: function () { selectVaultPanel(ctxRef); },
-      title: '打开会话保险库面板',
-      style: {
-        display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 10px',
-        border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: 13, textAlign: 'left'
-      }
-    },
-    h('span', { style: { display: 'flex', opacity: 0.75 } }, vaultIconSearch(16)),
-    h('span', { style: { flex: 1 } }, '会话保险库')
+    'span',
+    { style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } },
+    vaultIconVault(size)
   );
 }
 

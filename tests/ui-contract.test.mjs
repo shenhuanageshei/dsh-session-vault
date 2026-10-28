@@ -454,3 +454,58 @@ test('P4 UI 契约（UI 档 §7）：设置页子代理卡（指路/二次确认
     assert.match(text, /gaps\.map\(function \(gap\)/, 'gaps 必须逐条列出 id 与原因');
   }
 });
+
+// ---------------------------------------------------------------------------
+// P4 / UI 档 §7.1（2026-10-28 用户反馈）：列表排序切换「按工作区（默认）/ 按时间」
+// ---------------------------------------------------------------------------
+test('B4 / UI 档 §7.1：列表排序切换（默认按工作区 + 按时间保持原行为 + 窗口化不变）', async () => {
+  const code = await read('lib/client.js');
+  const source = await read('src/ui/panel.tsx');
+
+  // ① 接线面：工具条两个排序标签、默认「按工作区」、排序状态是本地 state、排序接在筛选之后
+  for (const text of [code, source]) {
+    assert.match(text, /var DEFAULT_VAULT_SORT = 'workspace'/, '默认排序必须是「按工作区」');
+    assert.match(text, /var VAULT_SORTS = \[/, '缺少排序定义表');
+    assert.match(text, /\{ id: 'workspace', label: '按工作区'/, '排序选项之一：按工作区');
+    assert.match(text, /\{ id: 'time', label: '按时间'/, '排序选项之一：按时间');
+    assert.match(text, /function vaultSortItems\(items, mode\)/, '缺少排序纯函数');
+    assert.match(text, /var sortMode = React\.useState\(DEFAULT_VAULT_SORT\);/, '排序状态必须放本地 state（默认按工作区）');
+    assert.match(text, /VAULT_SORTS\.map\(function \(option\)/, '工具条必须渲染排序切换（两个选项）');
+    assert.match(text, /var visible = vaultSortItems\(visibleFiltered, sortMode\[0\]\);/, '排序必须接在筛选之后');
+    // 排序只改顺序：窗口化、固定行高、分页结构一行未动
+    assert.match(text, /var virtualRange = windowRange\(visible\.length, listScroll\[0\], viewportHeight\);/, '窗口化仍按排序后的行数算窗口');
+    assert.match(text, /var renderedRows = visible\.slice\(virtualRange\.start, virtualRange\.end\);/, '渲染结构不变（仍只渲染窗口内的行）');
+    assert.match(text, /height: VIRTUAL_ROW_HEIGHT/, '固定行高不变（排序不得引入分组标题行）');
+  }
+
+  // ② 行为面：从源码切片取出同一个纯函数（bundle 内不导出），断言排序语义。
+  const start = source.indexOf('function vaultSortItems(items, mode) {');
+  assert.ok(start >= 0, '源码里必须能定位排序纯函数');
+  const end = source.indexOf('\n}\n', start);
+  assert.ok(end > start, '排序纯函数必须有可切片的结尾');
+  const fnSource = source.slice(start, end + 3);
+  // eslint-disable-next-line no-new-func
+  const vaultSortItems = new Function(fnSource + '\nreturn vaultSortItems;')();
+  assert.equal(typeof vaultSortItems, 'function', '排序纯函数必须可取用');
+
+  // a1 不是收藏但比同组的收藏 a2 更新：这正是「按工作区不置顶」与「按时间收藏优先」的判别点
+  const rows = [
+    { id: 'b1', workspace: 'beta', lastActiveAt: 100, favorite: false },
+    { id: 'a1', workspace: 'alpha', lastActiveAt: 250, favorite: false },
+    { id: 'b2', workspace: 'beta', lastActiveAt: 300, favorite: true },
+    { id: 'a2', workspace: 'alpha', lastActiveAt: 200, favorite: true },
+    { id: 'x1', workspace: '', lastActiveAt: 900, favorite: true },
+  ];
+  assert.deepEqual(
+    vaultSortItems(rows, 'workspace').map((item) => item.id),
+    ['a1', 'a2', 'b2', 'b1', 'x1'],
+    '按工作区：标签升序分组 + 同组内上次活跃倒序 + 未知工作区排最后 + 收藏不置顶',
+  );
+  assert.deepEqual(
+    vaultSortItems(rows, 'time').map((item) => item.id),
+    ['x1', 'b2', 'a2', 'a1', 'b1'],
+    '按时间：收藏优先 + 上次活跃倒序（与现状一致）',
+  );
+  assert.deepEqual(rows.map((item) => item.id), ['b1', 'a1', 'b2', 'a2', 'x1'], '排序不得原地改写入参');
+  assert.deepEqual(vaultSortItems(null, 'workspace'), [], '空输入返回空数组（不抛）');
+});

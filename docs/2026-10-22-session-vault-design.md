@@ -693,7 +693,7 @@ P0–P2 已交付并在真机验收（迁移/恢复/清扫/搜索/预览）。�
 - **实施补充（P3a，2026-10-26）**：① 旧库首次升级时，历史会话没有 tool 计数 ⇒ 各扫一次以发现工具结果（扫过即记账，之后只扫含 tool/result 的会话）；取舍 = 正确性优先，代价是一次性重读。② 预览抽屉暂不渲染工具结果（scope 只覆盖检索索引），列入 P3b/UX 跟进。
 
 **FR-P3-3 收藏**
-- `/favorite {id, favorite}`；list 支持 `favorite` 过滤；面板 chip 启用、批量条加「收藏/取消收藏」；**默认排序：收藏优先**（同状态内 `favorite DESC, lastActiveAt DESC`）。
+- `/favorite {id, favorite}`；list 支持 `favorite` 过滤；面板 chip 启用、批量条加「收藏/取消收藏」；**排序**：2026-10-28 起默认「按工作区」（按工作区标签分组、同组内 `lastActiveAt DESC`，**收藏不置顶**，见 UI 档 §7.1）；切到「按时间」时才收藏优先（同状态内 `favorite DESC, lastActiveAt DESC`）。
 
 **FR-P3-4 回收站**
 - 表 `trash(session_id PK, sha256, size_bytes, favorite, row_json, cold_root, rel_dir, trashed_at, expires_at)`：`sha256` = 搬移前对源目录算的**全树基线**（恢复时用它校验）；`row_json` = 删除时 `sessions` 整行快照（恢复时整行回填，避免拼 NOT NULL 字段）；`trashed_at=now`、`expires_at=now+30d`；`sessions.hidden` 列。

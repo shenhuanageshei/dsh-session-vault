@@ -624,7 +624,7 @@ function VaultSettingsSection() {
       h('div', null, 'P1 已实现：列表 / 工作区筛选 / 单条与批量迁移 / 恢复 / 归档 / 取消归档 / 审计 manifest / 冷索引。'),
       h('div', null, 'P2 已实现：全局全文搜索（search）/ 只读预览（preview）/ 自动清扫（sweeper，含只读回填 tick 与暂停条件）/ 全量后台索引与增量刷新（indexer）。'),
       h('div', null, 'P3（本批已实现）：Ctrl/Cmd+Shift+K 全局搜索（普通 Ctrl+K 归宿主）+ 检索范围（正文 / 正文 + 工具结果，默认正文）。'),
-      h('div', null, 'P3b 已实现：收藏 /favorite（列表收藏优先置顶）/ 回收站 /delete（冷会话搬进 <vaultRoot>/trash，热会话只 hidden=1，文件零改动）/ 诊断与修复 /diagnose（只读）+ /repair（默认 dry-run，零写入）。'),
+      h('div', null, 'P3b 已实现：收藏 /favorite（列表收藏优先置顶，仅「按时间」排序时；「按工作区」排序时收藏不置顶，可用收藏 chip 查看）/ 回收站 /delete（冷会话搬进 <vaultRoot>/trash，热会话只 hidden=1，文件零改动）/ 诊断与修复 /diagnose（只读）+ /repair（默认 dry-run，零写入）。'),
       h('div', null, 'P4 已实现：子代理会话冷存（class S）—— 设置页为配置与只读读数，列表/预览/恢复入口在主面板「子代理会话」页。'),
       h('div', null, 'diagnostics：header 缺失按「header-unverified」记录，不当故障（BL-4）。')
     )

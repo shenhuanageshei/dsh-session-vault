@@ -509,3 +509,36 @@ test('B4 / UI 档 §7.1：列表排序切换（默认按工作区 + 按时间保
   assert.deepEqual(rows.map((item) => item.id), ['b1', 'a1', 'b2', 'a2', 'x1'], '排序不得原地改写入参');
   assert.deepEqual(vaultSortItems(null, 'workspace'), [], '空输入返回空数组（不抛）');
 });
+
+// ---------------------------------------------------------------------------
+// B3 回归（B5 收尾，2026-10-28）：主面板打不开的两个根因 + 失败不得回退到搜索
+// 这三条锚住 B3 的修复面，防止再退化：改回 id: 注册 / 删掉 inject.layout /
+// 在 selectVaultPanel 里又把 dispatchOpenSearch 加回来，都必须当场变红。
+// ---------------------------------------------------------------------------
+test('B3 回归：main 席位用 key: PANEL_ID 注册、exports.inject 含 layout、selectVaultPanel 不回退搜索', async () => {
+  const code = await read('lib/client.js');
+
+  // ① 宿主 ui-layout 的 LayoutController 按 main 注册项的 **key** 解析面板 id
+  //    （entry.options.key === id）；用 id 注册会让 selectPanel 抛 "is not registered"。
+  const mainStart = code.indexOf("registerSlot(ctx, 'main'");
+  const mainEnd = code.indexOf('}, UI.Panel);', mainStart);
+  assert.ok(mainStart >= 0 && mainEnd > mainStart, 'bundle 里必须能定位 main 席位注册块');
+  const mainBlock = code.slice(mainStart, mainEnd);
+  assert.match(mainBlock, /key: PANEL_ID/, 'main 席位必须用 key: PANEL_ID 注册（宿主按 options.key 解析）');
+  assert.doesNotMatch(mainBlock, /\bid:\s*PANEL_ID/, 'main 席位不得用 id: PANEL_ID（selectPanel 会抛 not registered）');
+
+  // ② 客户端插件必须声明 inject: ['slots', 'layout']——不声明时 cordis 代理访问 ctx.layout 直接抛错，
+  //    主面板永远切不过去（B3 的另一根因）。
+  const injectMatch = code.match(/exports\.inject\s*=\s*(\[[^\]]*\])/);
+  assert.ok(injectMatch, 'bundle 必须声明 exports.inject（含 slots 与 layout）');
+  assert.match(injectMatch[1], /'layout'/, "exports.inject 必须含 'layout'（否则 ctx.layout 代理抛错，主面板打不开）");
+  assert.match(injectMatch[1], /'slots'/, "exports.inject 必须含 'slots'");
+
+  // ③ 切面板失败只 warn、返回 false，绝不回退去打开搜索（用户报的直接症状：点侧栏行只弹搜索浮层）。
+  const selectStart = code.indexOf('function selectVaultPanel(ctx) {');
+  const selectEnd = code.indexOf('function openHotSession(', selectStart);
+  assert.ok(selectStart >= 0 && selectEnd > selectStart, 'bundle 里必须能定位 selectVaultPanel 函数体');
+  const selectBody = code.slice(selectStart, selectEnd);
+  assert.doesNotMatch(selectBody, /dispatchOpenSearch/, 'selectVaultPanel 不得回退到打开搜索（B3 根因之三）');
+  assert.match(selectBody, /layout\.selectPanel\(PANEL_ID\)/, 'selectVaultPanel 必须走 layout.selectPanel(PANEL_ID)');
+});

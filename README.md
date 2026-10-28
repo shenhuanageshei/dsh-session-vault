@@ -4,13 +4,13 @@
 `<DSH_HOME>/session-vault/cold`，热目录只留冷索引（元数据 + 全文 + 审计）；需要时按落库事实一键搬回原 `projectKey`
 并调官方 `unarchiveSession` 解除归档。支持所有工作区（热）/ 归档 / 冷存的统一列表与本地全文索引。
 
-> **脱敏说明**：本仓库为公开准备做过脱敏——文档中的 `<DSH_HOME>`、`<USER_HOME>`、`<workspace-root>`、`<cold-root>`、`<DSH_INSTALL>` 是路径占位符；工作区/项目名已替换为中性名（`workspace-*` 等）；提交作者统一为 `dsh-session-vault <shenhuanageshei@users.noreply.github.com>`。代码逻辑与测试断言不受影响（276 项全绿）。
+> **脱敏说明**：本仓库为公开准备做过脱敏——文档中的 `<DSH_HOME>`、`<USER_HOME>`、`<workspace-root>`、`<cold-root>`、`<DSH_INSTALL>` 是路径占位符；工作区/项目名已替换为中性名（`workspace-*` 等）；提交作者统一为 `dsh-session-vault <shenhuanageshei@users.noreply.github.com>`。代码逻辑与测试断言不受影响（277 项全绿）。
 
 - 目标宿主：**DSH 0.2.1-rc.2** 桌面版（Node 24，ESM，内置 `node:sqlite` / `node:zlib` zstd）。版本门写在
   `package.json` 的 `engines.dsh = ">=0.2.1-rc.2 <0.3.0"`。
 - 当前版本：**0.4.0**（2026-10-28）——变更见 [CHANGELOG.md](CHANGELOG.md)。
 - 当前范围：**P0 + P1 + P2 + P3a + P3b + P4**（P4 = 子代理会话冷存：已实机迁移 class S **1156 个 / 约 509 MiB**，0 失败）（… / 自动清扫 / 全量索引 / 全文搜索 / 只读预览；P3a = **Ctrl/Cmd+Shift+K** 全局搜索（普通 Ctrl+K 归宿主）+ **检索范围** `searchScope`：默认正文，可选收录工具结果（只收结果、单条 8KB、不含参数）；P3b = 收藏 / 回收站 / 诊断修复 / 列表窗口化）。
-- **P4（子代理会话冷存 / class S）已实施并于 2026-10-28 实机迁移**：批次 A/B1/B2/B3/B4/B5 交付，全量 **276 项全绿**；两批迁移共 1157 次（273 + 884），class S 冷存 **1156 个 / 533,401,237 字节**，0 失败，恢复实测通过；见[设计档](docs/2026-10-22-session-vault-design.md) §19 与下方「P4 子代理会话冷存（已实施）」。
+- **P4（子代理会话冷存 / class S）已实施并于 2026-10-28 实机迁移**：批次 A/B1/B2/B3/B4/B5 交付，全量 **277 项全绿**；两批迁移共 1157 次（273 + 884），class S 冷存 **1156 个 / 533,401,237 字节**，0 失败，恢复实测通过；见[设计档](docs/2026-10-22-session-vault-design.md) §19 与下方「P4 子代理会话冷存（已实施）」。
 
 设计文档（以下为唯一事实源）：
 

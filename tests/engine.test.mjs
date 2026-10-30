@@ -1458,3 +1458,76 @@ test('B6：originalOf 对 VAULT_ORIGINAL 里的原型方法保留 this（unarchi
     await h.dispose();
   }
 });
+
+// ---------------------------------------------------------------------------
+// B7（真机缺陷，2026-10-30）：class A 永久暂停 —— reconcileRegistry 只「打」不「清」
+//
+// 真机事实：库里 19 条 status='cold' 且 error='external-unarchived' 的行（全部 team-link-*），
+// 而 workspace.json 的 global.archivedSessionIds（119 条）里这些 id **全部存在** ⇒
+// 「冷存但未归档」判定是历史标记残留（启动早期 / 宿主重写 workspace.json 的窗口读到不含这些 id 的
+// 集合快照时打上）；之后集合恢复也不会自愈，Sweeper.pauseReason() 见 external-unarchived 数量 > 0
+// ⇒ class A 永久暂停（class S 不受影响）。
+// 修法：同一循环里加自愈分支 —— 归档集合重新包含该 id 且 error 恰为该错误码 ⇒ 清空 + 计数 + warn。
+// 铁律：只清这一个错误码（lost / needs-review 一律不动）；class S 跳过位置不变；A-13 的「打标记」语义不动。
+// ---------------------------------------------------------------------------
+test('B7：reconcileRegistry 自愈 external-unarchived 假阳性（集合恢复 ⇒ 清标记；A-13 打标与保护态不变）', async () => {
+  const h = await createHarness();
+  try {
+    // 只入 DB 行、不读盘：模拟「集合快照不含这些 id 时被打了标记」的存量行。
+    const seedColdRow = (id, patch = {}) =>
+      h.store.upsertSession(Object.assign({
+        session_id: id,
+        project_key: h.pk,
+        rel_dir: h.pk + '/' + id,
+        log_names: 'session.v4.jsonl.zstd',
+        format_version: 4,
+        bytes: 100,
+        file_size: 100,
+        file_mtime_ms: 1791000000000,
+        header_cwd: h.cwd,
+        created_at: 1791000000000,
+        status: 'cold',
+        cold_root: h.paths.coldRootDefault,
+        source_sha: 'sha-' + id,
+      }, patch));
+
+    // (a) 在归档集合内 + 历史残留标记 ⇒ 自愈清空 + 计数（真机那 19 条的形态）
+    seedColdRow('cold-in-archive', { error: 'external-unarchived' });
+    h.archived.add('cold-in-archive');
+    // (b) 不在归档集合内 + 无保护态 ⇒ 仍按 A-13 打标（既有语义一字不改）
+    seedColdRow('cold-outside-archive');
+    // (c) 保护态对照：同样在归档集合内，但 error='lost' ⇒ 一个字节都不动
+    seedColdRow('cold-lost', { error: 'lost' });
+    h.archived.add('cold-lost');
+    // (d) 保护态对照：不在归档集合内，needs-review 不得被 A-13 覆盖成 external-unarchived
+    seedColdRow('cold-needs-review', { error: 'needs-review' });
+
+    const counts = { externalUnarchived: 0, flipped: 0 };
+    await h.engine.reconcileRegistry(counts);
+
+    assert.equal(h.store.getSession('cold-in-archive').error, null, '集合已恢复 ⇒ 残留标记必须自愈清空（B7）');
+    assert.equal(counts.externalUnarchivedCleared, 1, '自愈计数必须 +1');
+    assert.equal(h.store.getSession('cold-outside-archive').error, 'external-unarchived', 'A-13 打标语义不变');
+    assert.equal(counts.externalUnarchived, 1, '只该标这一行');
+    assert.equal(h.store.getSession('cold-lost').error, 'lost', 'lost 不受自愈影响（保护态）');
+    assert.equal(h.store.getSession('cold-needs-review').error, 'needs-review', 'needs-review 不受影响（保护态）');
+
+    // 幂等：已经是 error=null ⇒ 不写入、不计数
+    const counts2 = { externalUnarchived: 0, flipped: 0 };
+    await h.engine.reconcileRegistry(counts2);
+    assert.equal(counts2.externalUnarchivedCleared || 0, 0, '幂等：已清空的行不重复计数');
+    assert.equal(counts2.externalUnarchived, 1, '对照行仍持续被标（不在自愈面）');
+    assert.equal(h.store.getSession('cold-in-archive').error, null);
+
+    // 负向对照：把 id 从归档集合里删掉 ⇒ 才该重新打标（证明自愈只认集合事实）
+    h.archived.delete('cold-in-archive');
+    const counts3 = { externalUnarchived: 0, flipped: 0 };
+    await h.engine.reconcileRegistry(counts3);
+    assert.equal(h.store.getSession('cold-in-archive').error, 'external-unarchived', '集合再次不含该 id ⇒ A-13 重新打标');
+    assert.equal(counts3.externalUnarchived, 2, '两行都不在集合里');
+    assert.equal(counts3.externalUnarchivedCleared || 0, 0, '没有可自愈的行 ⇒ 零计数');
+  } finally {
+    await h.dispose();
+  }
+});
+

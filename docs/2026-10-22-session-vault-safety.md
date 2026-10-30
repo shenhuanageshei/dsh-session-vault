@@ -32,7 +32,7 @@
 | I-14 | 工具结果入库 = **明文**（可能含密钥）：`searchScope` 默认 body，开启需用户显式操作并在设置页提示 | 隐私泄漏 | A-P3-2 + 设置页文案断言 |
 | I-9 | 冷目录必须在 `~/.dsh/sessions` 之外 | 可能拖垮 DSH 启动 | A-11 |
 | I-10 | 插件卸载后，冷数据仍可手工恢复（目录同构 + manifest 纯文本 + `tools/vault-restore.mjs`） | 数据被锁死在插件里 | 演练：关 DSH → 脚本 → 起 DSH → 会话可见可继续对话 |
-| I-11 | **cold ⇒ id ∈ archivedSessionIds**：冷会话永远同时处于归档集合 | 官方 UI 把冷会话取消归档 → 谁也不可见的「隐形僵尸」 | A-13（拦截/对账 + 一键恢复） |
+| I-11 | **cold ⇒ id ∈ archivedSessionIds**：冷会话永远同时处于归档集合 | 官方 UI 把冷会话取消归档 → 谁也不可见的「隐形僵尸」 | A-13（拦截/对账 + 一键恢复）；B7：对账自愈——集合恢复即清历史 `external-unarchived` 误标（只清这一个码，保护态不动） |
 | I-15 | 子代理会话只有同时满足「未登记 + **无入边引用** + ≥N 天未活跃 + header 可读 + 扫描快照新鲜」才可能进迁移队列 | 把父会话的 lineage 拆断（`traceSession` 变 partial） | A-P4-1 / A-P4-2（负向） |
 | I-16 | class S 恢复**不得**调用 `unarchiveSession` / `attachSession`，只搬回 + 校验 + `status=hot` | 幽灵归档 / 幽灵挂载 | A-P4-7（负向） |
 | I-17 | `cold ⇒ id ∈ archivedSessionIds`（I-11）**只约束 class A**；class S 冷行永不参与 A-13 判定 | 每次启动把整台清扫器锁死 | A-P4-8（负向） |

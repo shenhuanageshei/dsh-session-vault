@@ -443,6 +443,8 @@ session/title     : data.title
 **启动收敛例程（R-14，按序）**：
 ①marker 收敛（下表真值表）→ ②冷目录↔DB 对账（遍历**全部已知冷根**，R-8）→ ③registry 对账（external-unarchived 标记、僵尸命中防护）→ ④才允许 Sweeper 起跑。
 
+**③ 是双向的（B7，2026-10-30 真机缺陷修正）**：`external-unarchived` 是**派生读数，不是墓碑**——cold 行重新回到 `archivedSessionIds`（I-11 重新成立）时，`reconcileRegistry()` 就地清空该错误码，计入 `counts.externalUnarchivedCleared` 并打一条 warn（「归档集合已恢复，清除 external-unarchived 残留标记」）。边界：**只清这一个错误码**，`lost` / `needs-review` 等保护态一律不动（`protective` 语义不变）；class S 跳过位置不变；A-13 的「打标记」语义不变；已是 `error=null` 的行零写入、零计数。理由：历史误标（启动早期或宿主重写 `workspace.json` 的窗口读到不含这些 id 的集合快照时打上）会让 `Sweeper.pauseReason()` 的 `external-unarchived-unsettled` **永久成立**，class A 被无限期暂停（真机 19 条 `team-link-*` 残留，其 id 全部在 `archivedSessionIds` 里）。
+
 | 崩溃点 | 磁盘态 | 启动收敛 |
 | --- | --- | --- |
 | marker 前 | 热完整 | 无事 |
@@ -796,7 +798,7 @@ stateDiagram-v2
 
 ## 19. P4 设计：子代理会话冷存（2026-10-27）
 
-> **状态：已实施并实机运行**（2026-10-28：代码批次 A/B1/B2/B3/B4/B5/B6 全部交付，全量 **277 项全绿**；实机迁移已执行两批——273 个（30 天）+ 884 个（14 天），class S 冷存合计 **1156 个 / 533,401,237 字节**，0 失败；恢复实测通过。剩余：class A 的 37 条历史 external-unarchived 未处理）。实施落点：
+> **状态：已实施并实机运行**（2026-10-28：代码批次 A/B1/B2/B3/B4/B5/B6/B7 全部交付，全量 **278 项全绿**；实机迁移已执行两批——273 个（30 天）+ 884 个（14 天），class S 冷存合计 **1156 个 / 533,401,237 字节**，0 失败；恢复实测通过。剩余：class A 的 37 条历史 external-unarchived 未处理）。实施落点：
 > `lib/store.js`（v2→v3）/ `lib/config.js`（三字段）/ `lib/engine.js`（scanHeaderFacts、subagentCandidates、
 > class 分支的 preflight/migrate/restore、对账与列表分域、批量作业）/ `lib/sweeper.js`（pauseReasonS +
 > sweepSubagents + 独立预算与退避键）/ `lib/http.js`（三个路由 + `/status.subagent` + `list.class`）/
@@ -929,7 +931,7 @@ DSH 的会话目录里有两个完全不同的群体，但**归档只覆盖其�
 
 **FR-P4-6 对账 / 列表 / 暂停分域**
 
-- `reconcileRegistry()`：`isSubagentRow(row)` 的冷行**不参与** A-13 判定（P-2）；`hot-restored → hot` 翻写仍只作用于 class A。
+- `reconcileRegistry()`：`isSubagentRow(row)` 的冷行**不参与** A-13 判定（P-2）；`hot-restored → hot` 翻写仍只作用于 class A。**B7**：A-13 的标记是派生读数——id 重新回到归档集合时自愈清空（只清 `external-unarchived`，详见 §11 ③ 注记）。
 - `/list`：`class` 参数三值 `archived`（默认）/ `subagent` / `all`；返回项带 `class` 与 `status`（`hot-subagent` / `cold`）。
 - `/status` 新增 `subagent` 段：`{candidates,candidatesBytes,cold,coldBytes,scanAt,scanCount,scanGaps,scanPosture,paused,job}`。
 - Sweeper：暂停条件拆两套 —— class A 保持原五条；class S 用

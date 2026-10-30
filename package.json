@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-vault",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "description": "会话保险库：把 DSH「归档」升级为可配置冷存储（迁移/恢复/冷索引），DSH Web 插件",
   "type": "module",

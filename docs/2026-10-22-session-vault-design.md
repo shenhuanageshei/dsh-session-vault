@@ -402,6 +402,7 @@ session/title     : data.title
 - `archivedAt` 来源（仅展示用，R-21）：包装在集合进入沿记录入 + 差分轮询兜底。
 - 失败退避：`next_attempt = now + min(6h, 5min * 2^(failures−1))`——**首次失败 5 分钟**，此后 10/20/…（2026-10-23 口径裁定，消除 off-by-one）。
 - 暂停条件：检测到 AM 插件（不装包装、清扫 no-op）、coldRoot 不可用、跨卷未开启、`restoring` 未收敛、`external-unarchived` 未收敛。
+  - **B8（2026-10-30）**：`external-unarchived` 这一条按**当前** registry 归档集合判定——`Sweeper.pauseReason()` 只把「库里带该错误码 **且 id 不在当前集合里**」的行算作未收敛；id 已在集合里的历史误标不暂停（标记本身由每拍 registry 对账自愈，见 §11 ③）。读不到 registry ⇒ 空集合 ⇒ 退回旧行为（只看错误码），**不 fail-open 到「永不暂停」**。其余四条暂停条件与 class S 的 `pauseReasonS` 不动。
 
 ## 10. UI 信息架构
 
@@ -444,6 +445,11 @@ session/title     : data.title
 ①marker 收敛（下表真值表）→ ②冷目录↔DB 对账（遍历**全部已知冷根**，R-8）→ ③registry 对账（external-unarchived 标记、僵尸命中防护）→ ④才允许 Sweeper 起跑。
 
 **③ 是双向的（B7，2026-10-30 真机缺陷修正）**：`external-unarchived` 是**派生读数，不是墓碑**——cold 行重新回到 `archivedSessionIds`（I-11 重新成立）时，`reconcileRegistry()` 就地清空该错误码，计入 `counts.externalUnarchivedCleared` 并打一条 warn（「归档集合已恢复，清除 external-unarchived 残留标记」）。边界：**只清这一个错误码**，`lost` / `needs-review` 等保护态一律不动（`protective` 语义不变）；class S 跳过位置不变；A-13 的「打标记」语义不变；已是 `error=null` 的行零写入、零计数。理由：历史误标（启动早期或宿主重写 `workspace.json` 的窗口读到不含这些 id 的集合快照时打上）会让 `Sweeper.pauseReason()` 的 `external-unarchived-unsettled` **永久成立**，class A 被无限期暂停（真机 19 条 `team-link-*` 残留，其 id 全部在 `archivedSessionIds` 里）。
+
+**B8（2026-10-30 第二次重启后真机实测：B7 只做对账一次并不够）**：B7 的自愈**只在 `recoverOnBoot()` 里跑一次**，而那一次跑在 workspace registry 的归档集合加载完成之前（或期间抛错被 `.catch` 吞成一条 warn）⇒ 自愈分支拿到的集合不含误标 id，一条都没清；之后**没有任何路径再跑对账**。真机读数：`/status` 里 `archived=119`（19 个误标 id 全部在集合内），库里仍是 19 条 `error='external-unarchived'`，`pauseReason()` 照旧返回 `external-unarchived-unsettled`。两条修正：
+1. **`reconcileRegistry()` 改为「启动 + 每拍」**：`Sweeper._sweep()` 在调 `pauseReason(cfg)` **之前**先 `await engine.reconcileRegistry({externalUnarchived:0, externalUnarchivedCleared:0, flipped:0})`；失败只 warn（不阻断本拍清扫、不得让整拍 no-op），对账本身幂等。
+2. **`pauseReason()` 的 external 判据改为「当前集合里没有的才算未收敛」**（见 §9 的暂停条件注记）——即使某一拍对账因时序没跑成，历史误标也不会再把 class A 钉死；读不到 registry 时退回旧行为（fail-closed）。
+边界不变：只清 `external-unarchived` 一个错误码（`lost` / `needs-review` 不动）、class S 分域不动、A-13 打标语义不动、`pauseReasonS` 不动。
 
 | 崩溃点 | 磁盘态 | 启动收敛 |
 | --- | --- | --- |

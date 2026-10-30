@@ -677,3 +677,112 @@ test('P4 FR-P4-2（审计 #3）：全量索引完成后触发一次过期的 hea
   }
 });
 
+// ---------------------------------------------------------------------------
+// B8（2026-10-30 真机缺陷，**第二次重启后**实测）：B7 的自愈没落地 —— 两条根因各一个锚
+//  ① pauseReason 只看库里的 error 列（不看**当前**归档集合）⇒ 历史误标把 class A 永久钉死；
+//  ② registry 对账只在 recoverOnBoot() 里跑一次 ⇒ 启动时序一旦不巧，之后没有任何路径再跑。
+// 真机读数：archived=119（19 个误标 id 全部在集合里），库里仍 19 条 error='external-unarchived'，
+// pauseReason 照旧 external-unarchived-unsettled（ids=19），class A 继续暂停。
+// ---------------------------------------------------------------------------
+
+test('B8 A-13：external-unarchived 按**当前**归档集合判定（在集合内 ⇒ 不暂停；不在 ⇒ 仍暂停；registry 读不到 ⇒ 退回旧行为）', async () => {
+  const h = await createHarness();
+  try {
+    h.store.upsertSession({
+      session_id: 'session-b8-mislabel', project_key: h.pk, rel_dir: h.pk + '/session-b8-mislabel',
+      log_names: 'session.v4.jsonl.zstd', format_version: 4, status: 'cold', cold_root: h.paths.coldRootDefault,
+      error: 'external-unarchived', source_sha: '',
+    });
+    const sweeper = h.sweeper();
+
+    // ① 历史误标 + id 在**当前**归档集合里（I-11 重新成立）⇒ class A 必须可跑
+    h.archived.add('session-b8-mislabel');
+    assert.equal(h.engine.archivedIds().has('session-b8-mislabel'), true, '前提：当前集合包含该 id');
+    assert.equal(await sweeper.pauseReason({ allowCrossVolume: true }), null, '误标在集合内 ⇒ 不得暂停（B8 根因 ①）');
+
+    // ② 同一行 id 不在集合里 ⇒ 仍暂停（A-13 的语义一个字节都不放宽）
+    h.archived.delete('session-b8-mislabel');
+    const paused = await sweeper.pauseReason({ allowCrossVolume: true });
+    assert.equal(paused && paused.code, 'external-unarchived-unsettled', '集合里没有 ⇒ 仍是真未收敛：' + JSON.stringify(paused));
+    assert.deepEqual(paused.ids, ['session-b8-mislabel'], '暂停原因必须逐条列出真正的未收敛 id');
+
+    // ③ registry 读不到（抛错）⇒ 退回旧行为：仍按 error 列暂停（**不** fail-open 到「永不暂停」）
+    h.archived.add('session-b8-mislabel');
+    const archivedIds = h.engine.archivedIds;
+    h.engine.archivedIds = () => { throw new Error('registry-unavailable'); };
+    try {
+      const fallback = await sweeper.pauseReason({ allowCrossVolume: true });
+      assert.equal(fallback && fallback.code, 'external-unarchived-unsettled', '读不到 registry ⇒ fail-closed（B8 边界）');
+    } finally {
+      h.engine.archivedIds = archivedIds;
+    }
+    assert.equal(await sweeper.pauseReason({ allowCrossVolume: true }), null, '注入解除后回到「在集合内 ⇒ 不暂停」');
+  } finally {
+    await h.dispose();
+  }
+});
+
+test('B8：每一拍清扫先跑 registry 对账（误标当拍自愈；对账失败不阻断整拍）', async () => {
+  // ① 每拍对账：cold 行上的历史误标必须在**清扫拍里**被清掉（不依赖 recoverOnBoot 的时机）
+  {
+    const h = await createHarness();
+    try {
+      const id = await seedArchived(h, 'session-b8-heal', 30);
+      const migrated = await h.engine.migrate(id, { reason: 'b8-test' });
+      assert.equal(migrated.ok, true, '前提：先把它搬到冷侧（真机误标行都是 cold 行）：' + JSON.stringify(migrated));
+      assert.equal(h.store.getSession(id).status, 'cold');
+      h.store.updateSession(id, { error: 'external-unarchived' });
+      h.engine.invalidate();
+      assert.equal(h.store.getSession(id).error, 'external-unarchived', '前提：历史误标在库里');
+
+      let reconciles = 0;
+      const reconcile = h.engine.reconcileRegistry.bind(h.engine);
+      h.engine.reconcileRegistry = async (counts) => {
+        reconciles += 1;
+        return reconcile(counts);
+      };
+
+      const sweeper = h.sweeper();
+      const report = await sweeper.sweep();
+      assert.equal(reconciles, 1, '每拍必须跑**恰好一次** registry 对账（B8 根因 ②）');
+      assert.equal(h.store.getSession(id).error, null, '误标必须当拍被 B7 自愈清掉（不再只在启动跑一次）');
+      assert.equal(report.skipped, undefined, '误标不该再让整拍 no-op：' + JSON.stringify(report));
+      assert.equal(sweeper.snapshot().paused, false);
+
+      // 第二拍仍要跑对账（不是「只有启动后第一拍」的一次性开关），且幂等：已清空的行零写入
+      const second = await sweeper.sweep();
+      assert.equal(reconciles, 2, '第二拍同样要跑对账');
+      assert.equal(second.skipped, undefined);
+      assert.equal(h.store.getSession(id).error, null);
+
+      // 负向：真的未收敛（id 不在当前集合里）⇒ 当拍仍必须暂停（A-13 不放宽）
+      h.store.upsertSession({
+        session_id: 'session-b8-stray', project_key: h.pk, rel_dir: h.pk + '/session-b8-stray',
+        log_names: 'session.v4.jsonl.zstd', format_version: 4, status: 'cold', cold_root: h.paths.coldRootDefault,
+        error: 'external-unarchived', source_sha: '',
+      });
+      const paused = await sweeper.sweep();
+      assert.equal(paused.skipped, 'external-unarchived-unsettled', JSON.stringify(paused));
+      assert.deepEqual(paused.paused.ids, ['session-b8-stray'], '不在集合里的行仍然让 class A 暂停');
+    } finally {
+      await h.dispose();
+    }
+  }
+  // ② 对账失败只 warn，不得让整拍 no-op（合法候选照常迁移）
+  {
+    const h = await createHarness();
+    try {
+      const id = await seedArchived(h, 'session-b8-reconcile-boom', 30);
+      const warns = [];
+      h.engine.reconcileRegistry = async () => { throw new Error('reconcile-boom'); };
+      const sweeper = h.sweeper({ logger: { info() {}, warn(message) { warns.push(String(message)); }, error() {} } });
+      const report = await sweeper.sweep();
+      assert.equal(report.migrated, 1, '对账失败不得让整拍 no-op（B8 验收）：' + JSON.stringify(report));
+      assert.equal(h.store.getSession(id).status, 'cold');
+      assert.equal(warns.some((message) => /registry 对账失败/.test(message)), true, '失败必须 warn 留痕：' + JSON.stringify(warns));
+    } finally {
+      await h.dispose();
+    }
+  }
+});
+

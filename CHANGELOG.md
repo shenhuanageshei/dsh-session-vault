@@ -6,7 +6,8 @@
 
 ### 修复
 
-- **class A 永久暂停（真机缺陷）**：`reconcileRegistry()` 对 `external-unarchived` **只打标记、从不清除** —— 一旦某次读到不含这些 id 的归档集合快照（启动早期 / 宿主重写 `workspace.json` 的窗口），标记永久残留，`Sweeper.pauseReason()` 见数量 > 0 就让 class A 暂停。真机实测 19 条 `team-link-*` 的 id 全部在 `archivedSessionIds` 里，属历史误标。新增自愈分支：集合重新包含该 id 且 `error` 恰为该错误码 ⇒ 清空 + `externalUnarchivedCleared` 计数 + warn 日志；只清这一个码，`lost` / `needs-review` 保护态与 A-13 打标语义不变（幂等）。回归测试 1 条（277 → **278 项**）。**需重启 DSH 生效**。
+- **class A 永久暂停（真机缺陷）**：`reconcileRegistry()` 对 `external-unarchived` **只打标记、从不清除** —— 一旦某次读到不含这些 id 的归档集合快照（启动早期 / 宿主重写 `workspace.json` 的窗口），标记永久残留，`Sweeper.pauseReason()` 见数量 > 0 就让 class A 暂停。真机实测 19 条 `team-link-*` 的 id 全部在 `archivedSessionIds` 里，属历史误标。新增自愈分支：集合重新包含该 id 且 `error` 恰为该错误码 ⇒ 清空 + `externalUnarchivedCleared` 计数 + warn 日志；只清这一个码，`lost` / `needs-review` 保护态与 A-13 打标语义不变（幂等）。回归测试 1 条（277 → **278 项**）。
+- **B7 的自愈在真机上没落地（同日发现）**：`reconcileRegistry()` 只在 `recoverOnBoot()` 里跑一次，而那次跑在 workspace registry 归档集合加载完成之前（真机读数：`/status` 的 `archived=119` 已含这 19 个 id，库里却仍有 19 条误标）⇒ 自愈分支拿到的集合不含它们，一条都没清；此后没有任何路径再跑对账。补两刀：① `Sweeper.pauseReason()` 的 `external-unarchived` 判据改为**按当前归档集合判定**（集合里有 ⇒ 不暂停；读不到 registry ⇒ 退回旧行为，fail-closed 不 fail-open）；② **每一拍**清扫在 `pauseReason()` 之前先跑一次 registry 对账（失败只 warn、不阻断整拍），自愈不再依赖启动时序。回归测试 2 条（278 → **280 项**）。**需重启 DSH 生效**；重启后第一拍即解除 class A 暂停并清掉存量误标。
 
 ## [0.4.1] — 2026-10-28
 

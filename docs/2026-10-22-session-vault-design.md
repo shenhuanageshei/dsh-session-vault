@@ -804,7 +804,7 @@ stateDiagram-v2
 
 ## 19. P4 设计：子代理会话冷存（2026-10-27）
 
-> **状态：已实施并实机运行**（2026-10-28：代码批次 A/B1/B2/B3/B4/B5/B6/B7 全部交付，全量 **278 项全绿**；实机迁移已执行两批——273 个（30 天）+ 884 个（14 天），class S 冷存合计 **1156 个 / 533,401,237 字节**，0 失败；恢复实测通过。剩余：class A 的 37 条历史 external-unarchived 未处理）。实施落点：
+> **状态：已实施并实机运行**（2026-10-28：代码批次 A/B1/B2/B3/B4/B5/B6/B7/B8 全部交付，全量 **280 项全绿**；实机迁移已执行两批——273 个（30 天）+ 884 个（14 天），class S 冷存合计 **1156 个 / 533,401,237 字节**，0 失败；恢复实测通过。剩余：class A 的 37 条历史 external-unarchived 未处理）。实施落点：
 > `lib/store.js`（v2→v3）/ `lib/config.js`（三字段）/ `lib/engine.js`（scanHeaderFacts、subagentCandidates、
 > class 分支的 preflight/migrate/restore、对账与列表分域、批量作业）/ `lib/sweeper.js`（pauseReasonS +
 > sweepSubagents + 独立预算与退避键）/ `lib/http.js`（三个路由 + `/status.subagent` + `list.class`）/

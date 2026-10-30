@@ -170,7 +170,7 @@ npm run build && node --test tests/ui-contract.test.mjs   # 构建产物一致�
 
 **实机验证**：① 抽样 3 条字节数与 manifest 一致；② 冷读预览 `source=cold` 可读；③ 冷存搜索命中 `state=cold`；④ 恢复实测通过（热侧回来、冷侧消失、`attach:null`、`archivedSessionIds` 仍 118 条未变）；⑤ **重启后 272 个冷行没有被误标 `external-unarchived`**（P-2 风险实测否定）。
 
-**UI 收尾**：B3 修复「点侧栏入口只弹搜索」（根因：插件行自渲染文字+按钮 / `main` 用 `id` 而非 `key` 注册 / 未注入 `layout` / 失败回退开搜索）；B4 归档列表默认按工作区排序；B5 设置页文案与三条 B3 回归断言；B6 修复 class A 恢复的 `originalOf` 绑定缺陷（真机实测发现，需重启生效）；B7 修复 `reconcileRegistry` 只打标不清标的缺口（19 条 `external-unarchived` 假阳性会把 class A 永久暂停）。全量 **278 项全绿**。
+**UI 收尾**：B3 修复「点侧栏入口只弹搜索」（根因：插件行自渲染文字+按钮 / `main` 用 `id` 而非 `key` 注册 / 未注入 `layout` / 失败回退开搜索）；B4 归档列表默认按工作区排序；B5 设置页文案与三条 B3 回归断言；B6 修复 class A 恢复的 `originalOf` 绑定缺陷（真机实测发现，需重启生效）；B7 修复 `reconcileRegistry` 只打标不清标的缺口；B8 再修「对账只在启动跑一次 + 暂停判据只看 error 列」两个缺口（真机上 B7 因此没落地：19 条误标在 `archived=119` 的集合里仍被当成未归档）。全量 **280 项全绿**。
 
 **已知未处理**：class A 的 37 条 `external-unarchived`（P2 时代遗留）仍让 class A 清扫暂停，与 P4 无关。
 
